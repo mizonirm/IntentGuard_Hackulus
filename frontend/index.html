@@ -270,6 +270,83 @@
       border: 1px solid rgba(34, 197, 94, 0.45);
     }
 
+    /* =============================================
+       Before vs After Comparison Section
+    ============================================= */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .compare-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .compare-col {
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .compare-col.before {
+      background: rgba(239, 68, 68, 0.07);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .compare-col.after {
+      background: rgba(34, 197, 94, 0.07);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+    }
+
+    .compare-col-header {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .compare-col.before .compare-col-header { color: #fca5a5; }
+    .compare-col.after  .compare-col-header { color: #86efac; }
+
+    .compare-field {
+      font-size: 0.82rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      border: 1px solid transparent;
+    }
+
+    .compare-field .field-name {
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      opacity: 0.7;
+    }
+
+    .compare-field .field-value {
+      font-size: 0.88rem;
+      word-break: break-word;
+    }
+
+    .compare-field.risk-high   { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.3);  color: #fca5a5; }
+    .compare-field.risk-medium { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: #fde047; }
+    .compare-field.risk-safe   { background: rgba(34,197,94,0.10);  border-color: rgba(34,197,94,0.25); color: #86efac; }
+    .compare-field.removed     { background: rgba(34,197,94,0.12);  border-color: rgba(34,197,94,0.3);  color: #86efac; }
+    .compare-field.unchanged   { background: rgba(148,163,184,0.08);border-color: rgba(148,163,184,0.2);color: #94a3b8; }
+
     footer {
       margin-top: 3rem;
       color: var(--text-muted);
@@ -344,6 +421,15 @@
       <div id="results" class="preview-box">No file selected. Ready for scan...</div>
     </section>
 
+    <!-- Before vs After Comparison (shown after Clean) -->
+    <section id="compare-section" class="card" style="display:none; border-left: 4px solid var(--success);">
+      <div class="card-header">
+        <div class="card-title" style="color: var(--success);">Before vs After Cleaning</div>
+        <span id="compare-summary" class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border-color: rgba(34,197,94,0.4);"></span>
+      </div>
+      <div id="compare-body" class="compare-grid"></div>
+    </section>
+
     <!-- Cross-File Location Check (GPS Clustering) -->
     <section class="card" style="border-left: 4px solid #a855f7;">
       <div class="card-header">
@@ -400,8 +486,9 @@
     const scanBtn = document.getElementById('scan-btn');
     const cleanBtn = document.getElementById('clean-btn');
 
-    // Store current selected file
+    // Store current selected file and last scan report
     let selectedFile = null;
+    let lastScanReport = null; // set by scanFile(), used by clean handler
 
     // Determine backend URL (handles http://localhost:8000 or custom host)
     const BACKEND_URL = window.location.origin.startsWith('http') 
@@ -525,6 +612,10 @@
       if (!file) return;
 
       selectedFile = file;
+      lastScanReport = null;
+      // Hide comparison when starting a fresh scan
+      document.getElementById('compare-section').style.display = 'none';
+
       scanBtn.style.display = 'inline-block';
       scanBtn.textContent = 'Scanning...';
       scanBtn.disabled = true;
@@ -556,6 +647,7 @@
         }
 
         const report = await response.json();
+        lastScanReport = report; // save for Before vs After
         renderMetadataReport(report);
         cleanBtn.disabled = false;
       } catch (err) {
@@ -569,6 +661,8 @@
     function handleFile(file) {
       if (!file) return;
       selectedFile = file;
+      lastScanReport = null;
+      document.getElementById('compare-section').style.display = 'none';
       scanFile(file);
     }
 
@@ -616,7 +710,9 @@
       });
     }
 
-    // Clean button wiring (calls POST /clean, handles 404 gracefully)
+    // =============================================
+    // Clean button — download + Before vs After
+    // =============================================
     cleanBtn.addEventListener('click', async () => {
       if (!selectedFile) return;
 
@@ -633,35 +729,49 @@
           body: formData,
         });
 
-        if (response.ok) {
-          const contentType = response.headers.get('content-type') || '';
-          if (contentType.includes('application/json')) {
-            const data = await response.json();
-            alert('Metadata cleaned: ' + JSON.stringify(data));
-          } else {
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `cleaned_${selectedFile.name}`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(downloadUrl);
-          }
-        } else {
+        if (!response.ok) {
           let detailMsg = `HTTP ${response.status} ${response.statusText}`;
           try {
             const err = await response.json();
             if (err.detail) detailMsg = err.detail;
           } catch (e) {}
-
           if (response.status === 404) {
             alert(`Notice: POST /clean returned 404 Not Found.\nThe clean endpoint has not been implemented yet.`);
           } else {
             alert(`Clean failed: ${detailMsg}`);
           }
+          return;
         }
+
+        // --- Download the cleaned file ---
+        const cleanedBlob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(cleanedBlob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `cleaned_${selectedFile.name}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+
+        // --- Re-scan the cleaned blob to get After metadata ---
+        cleanBtn.textContent = 'Comparing...';
+        const cleanedFile = new File([cleanedBlob], selectedFile.name, { type: selectedFile.type });
+        const rescanForm = new FormData();
+        rescanForm.append('file', cleanedFile);
+        const contextSelect = document.getElementById('context-select');
+        if (contextSelect) rescanForm.append('context', contextSelect.value);
+
+        let afterReport = null;
+        try {
+          const rescanResp = await fetch(`${BACKEND_URL}/scan`, { method: 'POST', body: rescanForm });
+          if (rescanResp.ok) afterReport = await rescanResp.json();
+        } catch (e) { /* rescan failed — comparison not available */ }
+
+        if (afterReport && lastScanReport) {
+          renderComparison(lastScanReport, afterReport);
+        }
+
       } catch (err) {
         alert('Could not reach backend for /clean. Ensure backend server is running.');
       } finally {
@@ -669,6 +779,105 @@
         cleanBtn.textContent = originalText;
       }
     });
+
+    // =============================================
+    // Before vs After renderer
+    // =============================================
+    function renderComparison(before, after) {
+      const section   = document.getElementById('compare-section');
+      const body      = document.getElementById('compare-body');
+      const summaryEl = document.getElementById('compare-summary');
+
+      const beforeFields = before.metadata || [];
+      const afterFields  = after.metadata  || [];
+
+      // Build a lookup of after fields by raw_key for fast access
+      const afterMap = {};
+      afterFields.forEach(f => { afterMap[f.raw_key] = f; });
+
+      // Count fields removed (had high/medium risk before, absent after)
+      const riskyRemoved = beforeFields.filter(f =>
+        (f.category === 'high' || f.category === 'medium') && !afterMap[f.raw_key]
+      ).length;
+
+      // Overall risk badges
+      const beforeRisk = (before.overall_risk?.risk_level || 'safe').toLowerCase();
+      const afterRisk  = (after.overall_risk?.risk_level  || 'safe').toLowerCase();
+
+      const riskBadgeStyle = (level) => {
+        const map = {
+          high:   'background:rgba(239,68,68,0.25);color:#ef4444;border:1px solid rgba(239,68,68,0.5)',
+          medium: 'background:rgba(245,158,11,0.25);color:#f59e0b;border:1px solid rgba(245,158,11,0.5)',
+          safe:   'background:rgba(34,197,94,0.25);color:#22c55e;border:1px solid rgba(34,197,94,0.5)',
+        };
+        return map[level] || map.safe;
+      };
+
+      // Build field rows — use before fields as the canonical order
+      let beforeRows = '';
+      let afterRows  = '';
+
+      beforeFields.forEach(field => {
+        const cat = (field.category || 'safe').toLowerCase();
+        const inAfter = afterMap[field.raw_key];
+
+        // BEFORE column — always show with risk color
+        beforeRows += `
+          <div class="compare-field risk-${cat}">
+            <span class="field-name">${escapeHtml(field.field)}</span>
+            <span class="field-value">${escapeHtml(field.value)}</span>
+          </div>`;
+
+        // AFTER column — removed or retained
+        if (!inAfter && (cat === 'high' || cat === 'medium')) {
+          afterRows += `
+            <div class="compare-field removed">
+              <span class="field-name">${escapeHtml(field.field)}</span>
+              <span class="field-value">&#10003; Removed</span>
+            </div>`;
+        } else if (inAfter) {
+          const aCat = (inAfter.category || 'safe').toLowerCase();
+          afterRows += `
+            <div class="compare-field risk-${aCat}">
+              <span class="field-name">${escapeHtml(inAfter.field)}</span>
+              <span class="field-value">${escapeHtml(inAfter.value)}</span>
+            </div>`;
+        } else {
+          // safe field, not in after either (fully stripped) — mark as removed too
+          afterRows += `
+            <div class="compare-field removed">
+              <span class="field-name">${escapeHtml(field.field)}</span>
+              <span class="field-value">&#10003; Removed</span>
+            </div>`;
+        }
+      });
+
+      // Summary badge
+      summaryEl.textContent = riskyRemoved > 0
+        ? `${riskyRemoved} risky field${riskyRemoved > 1 ? 's' : ''} removed`
+        : 'No risky fields found — file was already clean';
+
+      body.innerHTML = `
+        <div class="compare-col before">
+          <div class="compare-col-header">
+            <span>&#128308; BEFORE &mdash; Original File</span>
+            <span class="meta-badge" style="${riskBadgeStyle(beforeRisk)}">${beforeRisk.toUpperCase()} RISK</span>
+          </div>
+          ${beforeRows || '<div style="color:var(--text-muted);font-size:0.85rem;">No metadata detected.</div>'}
+        </div>
+        <div class="compare-col after">
+          <div class="compare-col-header">
+            <span>&#128994; AFTER &mdash; Cleaned File</span>
+            <span class="meta-badge" style="${riskBadgeStyle(afterRisk)}">${afterRisk.toUpperCase()} RISK</span>
+          </div>
+          ${afterRows || '<div style="color:var(--success);font-size:0.85rem;">&#10003; All metadata removed.</div>'}
+        </div>
+      `;
+
+      section.style.display = 'block';
+      // Smooth scroll into view
+      setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
 
     // ==========================================
     // Cross-File Location Clustering Logic
