@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IntentGuard — Metadata Scanner & Cleaner</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      max-width: 720px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .badge-primary {
+      background-color: rgba(56, 189, 248, 0.1);
+      color: var(--primary);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+    }
+
+    h1 span {
+      color: var(--primary);
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+
+    main {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #64748b;
+    }
+
+    .dot.connected {
+      background-color: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .dot.disconnected {
+      background-color: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: #0f172a;
+      border: none;
+      padding: 0.55rem 1.1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn:hover:not(:disabled) {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: #334155;
+      color: var(--text-main);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background-color: #475569;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius);
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .dropzone p {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .preview-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 1.25rem;
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    /* Metadata List and Risk Badges */
+    .meta-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .meta-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      gap: 1rem;
+      transition: transform 0.15s ease;
+    }
+
+    .meta-item:hover {
+      transform: translateX(2px);
+    }
+
+    /* High Risk: Red */
+    .meta-item.high {
+      background-color: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+
+    /* Medium Risk: Yellow */
+    .meta-item.medium {
+      background-color: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fde047;
+    }
+
+    /* Safe: Green */
+    .meta-item.safe {
+      background-color: rgba(34, 197, 94, 0.12);
+      border-color: rgba(34, 197, 94, 0.35);
+      color: #86efac;
+    }
+
+    .meta-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      white-space: nowrap;
+    }
+
+    .meta-item.high .meta-badge {
+      background-color: rgba(239, 68, 68, 0.25);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.45);
+    }
+
+    .meta-item.medium .meta-badge {
+      background-color: rgba(245, 158, 11, 0.25);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+    }
+
+    .meta-item.safe .meta-badge {
+      background-color: rgba(34, 197, 94, 0.25);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.45);
+    }
+
+    footer {
+      margin-top: 3rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge badge-primary">Security Prototype</div>
+    <h1>Intent<span>Guard</span></h1>
+    <p class="subtitle">Scan files for hidden metadata, analyze privacy & security risks, and strip sensitive footprints before sharing.</p>
+  </header>
+
+  <main>
+    <!-- Backend Connection Card -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">Backend Status</div>
+        <div class="status-indicator">
+          <div id="status-dot" class="dot"></div>
+          <span id="status-text">Checking backend...</span>
+        </div>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+        Testing connection to FastAPI endpoint (<code style="color: var(--primary);">/health</code> on port 8000).
+      </p>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button id="check-btn" class="btn btn-secondary">Recheck Connection</button>
+        <span id="ping-details" style="color: var(--text-muted); font-size: 0.8rem;"></span>
+      </div>
+    </section>
+
+    <!-- File Upload / Dropzone -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">Upload & Analyze File</div>
+      </div>
+      <div class="dropzone" id="dropzone">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom: 0.5rem;">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <div style="font-weight: 600; font-size: 1rem;">Click or drag file here to scan</div>
+        <p>Supports Images (.jpg, .png), Word (.docx), Excel (.xlsx), and PDF (.pdf)</p>
+        <input type="file" id="file-input" class="file-input">
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
+        <label for="context-select" style="font-size: 0.88rem; color: var(--text-muted); font-weight: 500;">
+          Target Sharing Context:
+        </label>
+        <select id="context-select" style="background: #0f172a; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; outline: none; cursor: pointer;">
+          <option value="public" selected>Public (External / Web)</option>
+          <option value="team">Team (Internal Collaborators)</option>
+          <option value="anonymous">Anonymous (Full Privacy)</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Analysis & Cleaner Output -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">Metadata & Risk Analysis</div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="scan-btn" class="btn btn-secondary" style="display: none;">Scan</button>
+          <button id="clean-btn" class="btn" disabled>Clean Metadata</button>
+        </div>
+      </div>
+      <div id="results" class="preview-box">No file selected. Ready for scan...</div>
+    </section>
+
+    <!-- Cross-File Location Check (GPS Clustering) -->
+    <section class="card" style="border-left: 4px solid #a855f7;">
+      <div class="card-header">
+        <div class="card-title" style="color: #d8b4fe;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+            <path d="M2 12h20"></path>
+          </svg>
+          Cross-File Location Check
+        </div>
+        <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.4);">
+          DBSCAN Clustering
+        </span>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem; line-height: 1.5;">
+        Upload multiple files at once. IntentGuard uses DBSCAN with Haversine distance (250m radius) to uncover shared physical location patterns that might reveal sensitive addresses or routines.
+      </p>
+
+      <div class="dropzone" id="cross-dropzone" style="border-color: rgba(168, 85, 247, 0.4);">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.5rem;">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <div style="font-weight: 600; font-size: 0.95rem; color: #e9d5ff;">Click or drag multiple files here for cross-check</div>
+        <p>Supports selecting multiple photos or documents simultaneously</p>
+        <input type="file" id="cross-file-input" class="file-input" multiple>
+      </div>
+
+      <div id="cross-file-summary" style="display: none; margin-top: 0.85rem; font-size: 0.85rem; color: #c084fc;"></div>
+
+      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem;">
+        <button id="cross-submit-btn" class="btn" style="background: #a855f7; color: #ffffff;" disabled>Run Location Clustering</button>
+        <button id="cross-clear-btn" class="btn btn-secondary" style="display: none;">Clear</button>
+      </div>
+
+      <div id="cross-results" class="preview-box" style="margin-top: 1rem;">No files selected for cross-file check.</div>
+    </section>
+  </main>
+
+  <footer>
+    IntentGuard Prototype &bull; FastAPI + Scikit-learn + Pure JS UI
+  </footer>
+
+  <script>
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const pingDetails = document.getElementById('ping-details');
+    const checkBtn = document.getElementById('check-btn');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const results = document.getElementById('results');
+    const scanBtn = document.getElementById('scan-btn');
+    const cleanBtn = document.getElementById('clean-btn');
+
+    // Store current selected file
+    let selectedFile = null;
+
+    // Determine backend URL (handles http://localhost:8000 or custom host)
+    const BACKEND_URL = window.location.origin.startsWith('http') 
+      ? window.location.origin 
+      : 'http://localhost:8000';
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async function checkHealth() {
+      statusDot.className = 'dot';
+      statusText.textContent = 'Checking backend...';
+      pingDetails.textContent = '';
+
+      const startTime = performance.now();
+      try {
+        const response = await fetch(`${BACKEND_URL}/health`, { method: 'GET' });
+        const latency = Math.round(performance.now() - startTime);
+
+        if (response.ok) {
+          const data = await response.json();
+          statusDot.className = 'dot connected';
+          statusText.textContent = 'Connected (HTTP ' + response.status + ')';
+          pingDetails.textContent = `Response: ${JSON.stringify(data)} (${latency}ms)`;
+        } else {
+          statusDot.className = 'dot disconnected';
+          statusText.textContent = `HTTP ${response.status} Error`;
+        }
+      } catch (err) {
+        statusDot.className = 'dot disconnected';
+        statusText.textContent = 'Backend Offline';
+        pingDetails.textContent = 'Could not reach ' + BACKEND_URL + ' - Ensure Uvicorn is running.';
+      }
+    }
+
+    function renderMetadataReport(report) {
+      const { filename, file_type, metadata } = report;
+
+      if (!metadata || metadata.length === 0) {
+        results.innerHTML = `
+          <div style="padding: 1rem; color: var(--success);">
+            <strong>${escapeHtml(filename)}</strong> (${file_type.toUpperCase()}): No metadata detected. File appears clean.
+          </div>
+        `;
+        return;
+      }
+
+      const highCount = metadata.filter(m => m.category === 'high').length;
+      const medCount = metadata.filter(m => m.category === 'medium').length;
+      const safeCount = metadata.filter(m => m.category === 'safe').length;
+
+      const overall = report.overall_risk || null;
+      let overallHtml = '';
+      if (overall) {
+        const riskLvl = (overall.risk_level || 'safe').toLowerCase();
+        const confPct = Math.round((overall.confidence || 0) * 100);
+        const sourceLabel = (overall.source || 'ml').toUpperCase();
+        const contextLabel = (report.context || 'public').toUpperCase();
+
+        overallHtml = `
+          <div class="meta-item ${riskLvl}" style="margin-bottom: 1rem; padding: 0.9rem 1.1rem; border-radius: 8px;">
+            <div style="flex: 1;">
+              <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; margin-bottom: 0.2rem;">
+                Context: <strong>${escapeHtml(contextLabel)}</strong> &bull; Engine: ${sourceLabel}
+              </div>
+              <div style="font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em;">
+                Overall ML Risk: ${riskLvl.toUpperCase()}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span class="meta-badge">${riskLvl.toUpperCase()} RISK</span>
+              <div style="font-size: 0.75rem; opacity: 0.85; margin-top: 0.35rem;">${confPct}% Confidence</div>
+            </div>
+          </div>
+        `;
+      }
+
+      let html = `
+        ${overallHtml}
+        <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+          <div>
+            <strong style="color: var(--text-main); font-size: 0.95rem;">${escapeHtml(filename)}</strong>
+            <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.5rem;">(${file_type.toUpperCase()})</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; font-size: 0.75rem;">
+            ${highCount > 0 ? `<span style="background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">${highCount} High</span>` : ''}
+            ${medCount > 0 ? `<span style="background: rgba(245, 158, 11, 0.2); color: var(--warning); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">${medCount} Medium</span>` : ''}
+            ${safeCount > 0 ? `<span style="background: rgba(34, 197, 94, 0.2); color: var(--success); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">${safeCount} Safe</span>` : ''}
+          </div>
+        </div>
+        <div class="meta-list">
+      `;
+
+      metadata.forEach(item => {
+        const cat = (item.category || 'safe').toLowerCase();
+        const badgeLabel = cat.toUpperCase();
+        html += `
+          <div class="meta-item ${cat}">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem;">${escapeHtml(item.field)}</div>
+              <div style="word-break: break-word; font-size: 0.9rem; opacity: 0.95;">${escapeHtml(item.value)}</div>
+              <div style="font-size: 0.72rem; opacity: 0.6; margin-top: 0.25rem;">Key: ${escapeHtml(item.raw_key)}</div>
+            </div>
+            <span class="meta-badge">${badgeLabel}</span>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+      results.innerHTML = html;
+    }
+
+    async function scanFile(file) {
+      if (!file) return;
+
+      selectedFile = file;
+      scanBtn.style.display = 'inline-block';
+      scanBtn.textContent = 'Scanning...';
+      scanBtn.disabled = true;
+      cleanBtn.disabled = true;
+
+      results.innerHTML = `<div style="color: var(--primary);">Scanning <strong>${escapeHtml(file.name)}</strong>...</div>`;
+
+      const formData = new FormData();
+      formData.append('file', file);
+      const contextSelect = document.getElementById('context-select');
+      if (contextSelect) {
+        formData.append('context', contextSelect.value);
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/scan`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          let errorMsg = `HTTP ${response.status} Error`;
+          try {
+            const errData = await response.json();
+            if (errData.detail) errorMsg = errData.detail;
+          } catch (e) {}
+          results.innerHTML = `<div style="color: var(--danger); line-height: 1.5;"><strong>Scan Error:</strong> ${escapeHtml(errorMsg)}</div>`;
+          return;
+        }
+
+        const report = await response.json();
+        renderMetadataReport(report);
+        cleanBtn.disabled = false;
+      } catch (err) {
+        results.innerHTML = `<div style="color: var(--danger); line-height: 1.5;"><strong>Could not reach backend</strong> &mdash; Unable to connect to ${BACKEND_URL}. Ensure the backend server is running.</div>`;
+      } finally {
+        scanBtn.textContent = 'Re-scan';
+        scanBtn.disabled = false;
+      }
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      selectedFile = file;
+      scanFile(file);
+    }
+
+    // Dropzone interactions
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('dragover');
+      });
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    // Manual scan button
+    scanBtn.addEventListener('click', () => {
+      if (selectedFile) scanFile(selectedFile);
+    });
+
+    // Context selector change triggers re-scan
+    const contextSelect = document.getElementById('context-select');
+    if (contextSelect) {
+      contextSelect.addEventListener('change', () => {
+        if (selectedFile) scanFile(selectedFile);
+      });
+    }
+
+    // Clean button wiring (calls POST /clean, handles 404 gracefully)
+    cleanBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      const originalText = cleanBtn.textContent;
+      cleanBtn.disabled = true;
+      cleanBtn.textContent = 'Cleaning...';
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/clean`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const data = await response.json();
+            alert('Metadata cleaned: ' + JSON.stringify(data));
+          } else {
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `cleaned_${selectedFile.name}`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+          }
+        } else {
+          let detailMsg = `HTTP ${response.status} ${response.statusText}`;
+          try {
+            const err = await response.json();
+            if (err.detail) detailMsg = err.detail;
+          } catch (e) {}
+
+          if (response.status === 404) {
+            alert(`Notice: POST /clean returned 404 Not Found.\nThe clean endpoint has not been implemented yet.`);
+          } else {
+            alert(`Clean failed: ${detailMsg}`);
+          }
+        }
+      } catch (err) {
+        alert('Could not reach backend for /clean. Ensure backend server is running.');
+      } finally {
+        cleanBtn.disabled = false;
+        cleanBtn.textContent = originalText;
+      }
+    });
+
+    // ==========================================
+    // Cross-File Location Clustering Logic
+    // ==========================================
+    const crossDropzone = document.getElementById('cross-dropzone');
+    const crossFileInput = document.getElementById('cross-file-input');
+    const crossSubmitBtn = document.getElementById('cross-submit-btn');
+    const crossClearBtn = document.getElementById('cross-clear-btn');
+    const crossFileSummary = document.getElementById('cross-file-summary');
+    const crossResults = document.getElementById('cross-results');
+
+    let crossFiles = [];
+
+    function updateCrossFiles(files) {
+      if (!files || files.length === 0) return;
+      crossFiles = Array.from(files);
+      crossFileSummary.style.display = 'block';
+      crossFileSummary.textContent = `Selected ${crossFiles.length} file(s): ${crossFiles.map(f => f.name).join(', ')}`;
+      crossSubmitBtn.disabled = false;
+      crossClearBtn.style.display = 'inline-block';
+      crossResults.textContent = `Ready to analyze ${crossFiles.length} file(s) for shared physical locations.`;
+    }
+
+    crossDropzone.addEventListener('click', () => crossFileInput.click());
+    crossFileInput.addEventListener('change', (e) => updateCrossFiles(e.target.files));
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      crossDropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        crossDropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(evt => {
+      crossDropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        crossDropzone.classList.remove('dragover');
+      });
+    });
+
+    crossDropzone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        updateCrossFiles(dt.files);
+      }
+    });
+
+    crossClearBtn.addEventListener('click', () => {
+      crossFiles = [];
+      crossFileInput.value = '';
+      crossFileSummary.style.display = 'none';
+      crossSubmitBtn.disabled = true;
+      crossClearBtn.style.display = 'none';
+      crossResults.textContent = 'No files selected for cross-file check.';
+    });
+
+    crossSubmitBtn.addEventListener('click', async () => {
+      if (crossFiles.length === 0) return;
+
+      crossSubmitBtn.disabled = true;
+      crossSubmitBtn.textContent = 'Clustering...';
+      crossResults.innerHTML = '<div style="color: #c084fc;">Analyzing GPS patterns across uploaded files with DBSCAN...</div>';
+
+      const formData = new FormData();
+      crossFiles.forEach(f => formData.append('files', f));
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/cross-check`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          let errText = `HTTP ${response.status} Error`;
+          try {
+            const err = await response.json();
+            if (err.detail) errText = err.detail;
+          } catch (e) {}
+          crossResults.innerHTML = `<div style="color: var(--danger);"><strong>Error:</strong> ${escapeHtml(errText)}</div>`;
+          return;
+        }
+
+        const data = await response.json();
+        renderCrossCheckResults(data);
+      } catch (err) {
+        crossResults.innerHTML = `<div style="color: var(--danger);"><strong>Could not reach backend</strong> &mdash; Unable to connect to ${BACKEND_URL}/cross-check.</div>`;
+      } finally {
+        crossSubmitBtn.disabled = false;
+        crossSubmitBtn.textContent = 'Run Location Clustering';
+      }
+    });
+
+    function renderCrossCheckResults(data) {
+      const { clusters_found, clusters, message } = data;
+
+      if (clusters_found === 0) {
+        crossResults.innerHTML = `
+          <div class="meta-item safe" style="padding: 1rem; border-radius: 8px;">
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.25rem;">No Shared Clusters Detected</div>
+              <div style="opacity: 0.9; font-size: 0.9rem;">${escapeHtml(message)}</div>
+            </div>
+            <span class="meta-badge">SAFE</span>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `
+        <div class="meta-item high" style="padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+          <div style="flex: 1;">
+            <div style="font-weight: 800; font-size: 1.05rem; margin-bottom: 0.25rem;">
+              Shared Location Pattern Detected (${clusters_found} Cluster${clusters_found > 1 ? 's' : ''})
+            </div>
+            <div style="opacity: 0.95; font-size: 0.9rem; line-height: 1.4;">${escapeHtml(message)}</div>
+          </div>
+          <span class="meta-badge">HIGH RISK</span>
+        </div>
+        <div class="meta-list">
+      `;
+
+      clusters.forEach((cluster, idx) => {
+        html += `
+          <div class="meta-item high" style="flex-direction: column; align-items: stretch; gap: 0.6rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong>Cluster #${idx + 1} (Shared within ${cluster.radius_meters}m)</strong>
+              <span class="meta-badge">${cluster.files.length} FILES</span>
+            </div>
+            <div style="font-size: 0.85rem; color: #fca5a5;">
+              Center Coordinates: <strong>Lat ${cluster.center_lat}, Lon ${cluster.center_lon}</strong>
+            </div>
+            <div style="font-size: 0.85rem; opacity: 0.95; background: rgba(0, 0, 0, 0.25); padding: 0.5rem 0.75rem; border-radius: 4px;">
+              <strong>Linked Files:</strong> ${cluster.files.map(f => escapeHtml(f)).join(', ')}
+            </div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+      crossResults.innerHTML = html;
+    }
+
+    checkBtn.addEventListener('click', checkHealth);
+    window.addEventListener('DOMContentLoaded', checkHealth);
+  </script>
+</body>
+</html>

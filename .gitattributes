@@ -1,0 +1,12 @@
+# Normalize all text files to LF on commit, check out as CRLF on Windows
+* text=auto eol=lf
+
+# Binary files - no line ending conversion
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pkl binary
+*.joblib binary
