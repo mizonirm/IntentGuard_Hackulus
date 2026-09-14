@@ -2,7 +2,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -211,10 +211,11 @@ async def cross_check_locations(files: List[UploadFile] = File(...)):
 @app.post("/clean")
 async def clean_file_endpoint(
     file: UploadFile = File(...),
+    keys: Optional[str] = Form(None),
 ):
     """
-    Strip all metadata from the uploaded file and return the cleaned copy
-    as a file download.  Supports the same formats as /scan.
+    Strip metadata from the uploaded file. If keys is provided (comma-separated list of raw_keys),
+    only those selected metadata fields will be stripped. Otherwise, strip all metadata.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename in upload.")
@@ -229,6 +230,10 @@ async def clean_file_endpoint(
             detail=f"Unsupported file format '{suffix}'. Supported formats: {supported_types}",
         )
 
+    remove_keys = None
+    if keys:
+        remove_keys = [k.strip() for k in keys.split(",") if k.strip()]
+
     tmp_input = None
     tmp_output = None
     try:
@@ -241,15 +246,15 @@ async def clean_file_endpoint(
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f_out:
             tmp_output = f_out.name
 
-        # Dispatch to the appropriate cleaner
+        # Dispatch to the appropriate cleaner with remove_keys
         if file_type == "image":
-            clean_image(tmp_input, tmp_output)
+            clean_image(tmp_input, tmp_output, remove_keys=remove_keys)
         elif file_type == "docx":
-            clean_docx(tmp_input, tmp_output)
+            clean_docx(tmp_input, tmp_output, remove_keys=remove_keys)
         elif file_type == "xlsx":
-            clean_xlsx(tmp_input, tmp_output)
+            clean_xlsx(tmp_input, tmp_output, remove_keys=remove_keys)
         elif file_type == "pdf":
-            clean_pdf(tmp_input, tmp_output)
+            clean_pdf(tmp_input, tmp_output, remove_keys=remove_keys)
         else:
             raise HTTPException(status_code=400, detail="Unhandled file type.")
 

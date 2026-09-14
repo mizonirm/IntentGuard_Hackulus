@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 
 FIELD_NAMES = {
     "gps": "GPS Location",
+    "thumbnail_mismatch": "EXIF Thumbnail Mismatch",
     "device": "Camera Device",
     "datetime": "Capture Timestamp",
     "software": "Software",
@@ -21,7 +22,10 @@ FIELD_NAMES = {
     "has_tracked_changes": "Tracked Changes",
     "creator": "Creator",
     "hidden_sheets": "Hidden Sheets",
+    "hidden_rows_cols": "Hidden Rows/Columns",
     "external_links": "External Links",
+    "external_references": "External File References",
+    "has_fake_redactions": "Unsanitized Fake Redactions",
     "producer": "PDF Producer",
     "title": "Document Title",
     "creation_date": "Creation Date",
@@ -32,8 +36,8 @@ FIELD_NAMES = {
 def _classify_category(raw_key: str) -> str:
     """
     Classify a metadata field into high, medium, or safe:
-      - GPS, author, creator, identity, tracked changes, hidden content -> high
-      - Timestamps, software, device, producer, external references -> medium
+      - GPS, author, creator, identity, tracked changes, hidden content, thumbnail mismatch, external references, fake redactions -> high
+      - Timestamps, software, device, producer, hidden rows/columns -> medium
       - Everything else (title, comments, revision number, etc.) -> safe
     """
     key_lower = raw_key.lower()
@@ -50,6 +54,11 @@ def _classify_category(raw_key: str) -> str:
             "identity",
             "tracked_change",
             "hidden_sheet",
+            "thumbnail",
+            "mismatch",
+            "external_reference",
+            "fake_redaction",
+            "redaction",
         )
     ):
         return "high"
@@ -65,6 +74,7 @@ def _classify_category(raw_key: str) -> str:
             "producer",
             "link",
             "ref",
+            "hidden_rows_cols",
         )
     ):
         return "medium"
@@ -74,21 +84,23 @@ def _classify_category(raw_key: str) -> str:
 
 def normalize(raw_metadata: Dict[str, Any], file_type: str) -> List[Dict[str, str]]:
     """
-    Convert extractor raw dictionary output into a standardized list of metadata records:
-      [
-        {
-          "field": "GPS Location",
-          "value": "...",
-          "category": "high|medium|safe",
-          "raw_key": "..."
-        },
-        ...
-      ]
+    Convert extractor raw dictionary output into a standardized list of metadata records.
     """
     records: List[Dict[str, str]] = []
 
     for raw_key, val in raw_metadata.items():
         if val is None or val == "" or val == [] or val is False:
+            continue
+        if raw_key in (
+            "thumbnail_b64",
+            "total_tracked_changes",
+            "tracked_change_authors",
+            "tracked_change_date_range",
+            "tracked_changes_summary",
+            "total_fake_redactions",
+            "fake_redaction_details",
+            "fake_redaction_summary",
+        ):
             continue
 
         # 1. GPS Special Formatting
@@ -109,19 +121,52 @@ def normalize(raw_metadata: Dict[str, Any], file_type: str) -> List[Dict[str, st
         # 2. Tracked Changes Boolean
         if raw_key == "has_tracked_changes":
             if val is True:
+                summary_val = raw_metadata.get("tracked_changes_summary") or "Hidden / tracked revisions detected"
                 records.append(
                     {
                         "field": FIELD_NAMES.get("has_tracked_changes", "Tracked Changes"),
-                        "value": "Hidden / tracked revisions detected",
+                        "value": summary_val,
                         "category": "high",
                         "raw_key": "has_tracked_changes",
                     }
                 )
             continue
 
-        # 3. Hidden Sheets / Lists
+        # 3. Fake Redactions Boolean
+        if raw_key == "has_fake_redactions":
+            if val is True:
+                summary_val = raw_metadata.get("fake_redaction_summary") or "Text hidden beneath opaque overlays detected"
+                records.append(
+                    {
+                        "field": FIELD_NAMES.get("has_fake_redactions", "Unsanitized Fake Redactions"),
+                        "value": summary_val,
+                        "category": "high",
+                        "raw_key": "has_fake_redactions",
+                    }
+                )
+            continue
+
+        # 3. Hidden Sheets / Lists / Hidden Rows & Cols
         if isinstance(val, list):
-            formatted_val = ", ".join(str(item) for item in val)
+            if raw_key == "hidden_rows_cols":
+                parts = []
+                for item in val:
+                    if isinstance(item, dict):
+                        sheet_name = item.get("sheet", "Unknown Sheet")
+                        r_list = item.get("hidden_rows", [])
+                        c_list = item.get("hidden_columns", [])
+                        desc_parts = []
+                        if r_list:
+                            desc_parts.append(f"{len(r_list)} hidden row(s) {r_list}")
+                        if c_list:
+                            desc_parts.append(f"{len(c_list)} hidden col(s) {c_list}")
+                        parts.append(f"Sheet '{sheet_name}': {', '.join(desc_parts)}")
+                    else:
+                        parts.append(str(item))
+                formatted_val = "; ".join(parts)
+            else:
+                formatted_val = ", ".join(str(item) for item in val)
+
             field_name = FIELD_NAMES.get(raw_key, raw_key.replace("_", " ").title())
             records.append(
                 {

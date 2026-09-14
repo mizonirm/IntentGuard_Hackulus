@@ -6,6 +6,7 @@ sanitised file to output_path, and returns nothing.  All functions are
 intentionally minimal — strip the metadata, save, done.
 """
 
+import re
 import shutil
 from pathlib import Path
 
@@ -14,29 +15,103 @@ from pathlib import Path
 # Image cleaner  (JPEG / PNG / TIFF)
 # ---------------------------------------------------------------------------
 
-def clean_image(input_path: str, output_path: str) -> None:
-    """
-    Strip ALL EXIF data from an image (GPS, device, timestamps, software).
+from typing import List, Optional
 
-    Strategy: PIL re-save without the 'exif' kwarg drops the EXIF blob
-    entirely, which works for JPEG, PNG, and TIFF without any extra library.
-    piexif is not used here because PIL's approach is simpler and more
-    portable across image modes (e.g. RGBA PNGs).
+# ---------------------------------------------------------------------------
+# Image cleaner  (JPEG / PNG / TIFF)
+# ---------------------------------------------------------------------------
+
+def clean_image(input_path: str, output_path: str, remove_keys: Optional[List[str]] = None) -> None:
+    """
+    Strip EXIF data from an image.
+    If remove_keys is None or empty, strip ALL EXIF data.
+    If remove_keys is provided, selectively strip matching EXIF tags using piexif.
     """
     from PIL import Image
 
     suffix = Path(input_path).suffix.lower()
 
+    # If no specific keys provided or requested full strip, use PIL's save without exif
+    if not remove_keys:
+        with Image.open(input_path) as img:
+            if suffix in (".jpg", ".jpeg") and img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            save_kwargs: dict = {}
+            if suffix in (".jpg", ".jpeg"):
+                save_kwargs["exif"] = b""
+            img.save(output_path, **save_kwargs)
+        return
+
+    keys_set = set(k.lower() for k in remove_keys)
+
+    # Selective cleaning for JPEGs via piexif
+    if suffix in (".jpg", ".jpeg"):
+        try:
+            import piexif
+            exif_dict = piexif.load(input_path)
+
+            # GPS
+            if "gps" in keys_set:
+                exif_dict["GPS"] = {}
+
+            # Thumbnail
+            if "thumbnail" in keys_set:
+                exif_dict["thumbnail"] = None
+                if "1st" in exif_dict:
+                    exif_dict["1st"] = {}
+
+            # Device / Camera / Make / Model
+            if any(k in keys_set for k in ("device", "camera", "make", "model")):
+                for tag in (piexif.ImageIFD.Make, piexif.ImageIFD.Model):
+                    exif_dict.get("0th", {}).pop(tag, None)
+                for tag in (
+                    piexif.ExifIFD.BodySerialNumber,
+                    piexif.ExifIFD.LensModel,
+                    piexif.ExifIFD.LensMake,
+                    piexif.ExifIFD.LensSerialNumber,
+                    piexif.ExifIFD.DeviceSettingDescription,
+                ):
+                    exif_dict.get("Exif", {}).pop(tag, None)
+
+            # Datetime / Timestamps
+            if any(k in keys_set for k in ("datetime", "timestamp", "date")):
+                exif_dict.get("0th", {}).pop(piexif.ImageIFD.DateTime, None)
+                for tag in (
+                    piexif.ExifIFD.DateTimeOriginal,
+                    piexif.ExifIFD.DateTimeDigitized,
+                    piexif.ExifIFD.SubSecTime,
+                    piexif.ExifIFD.SubSecTimeOriginal,
+                    piexif.ExifIFD.SubSecTimeDigitized,
+                ):
+                    exif_dict.get("Exif", {}).pop(tag, None)
+
+            # Software
+            if "software" in keys_set:
+                exif_dict.get("0th", {}).pop(piexif.ImageIFD.Software, None)
+                exif_dict.get("0th", {}).pop(piexif.ImageIFD.ProcessingSoftware, None)
+
+            # Author / Artist / Copyright
+            if any(k in keys_set for k in ("author", "artist", "copyright")):
+                exif_dict.get("0th", {}).pop(piexif.ImageIFD.Artist, None)
+                exif_dict.get("0th", {}).pop(piexif.ImageIFD.Copyright, None)
+
+            exif_bytes = piexif.dump(exif_dict)
+            with Image.open(input_path) as img:
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                img.save(output_path, exif=exif_bytes)
+            return
+        except Exception:
+            # Fallback to full EXIF strip if piexif modification fails
+            pass
+
+    # Fallback or PNG/TIFF: full EXIF strip
     with Image.open(input_path) as img:
-        # Convert RGBA → RGB for JPEG (JPEG doesn't support alpha)
         if suffix in (".jpg", ".jpeg") and img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
-
-        # Save without exif; for JPEG pass 'exif=b""' explicitly to be safe
         save_kwargs: dict = {}
         if suffix in (".jpg", ".jpeg"):
             save_kwargs["exif"] = b""
-
         img.save(output_path, **save_kwargs)
 
 
@@ -44,31 +119,51 @@ def clean_image(input_path: str, output_path: str) -> None:
 # DOCX cleaner
 # ---------------------------------------------------------------------------
 
-def clean_docx(input_path: str, output_path: str) -> None:
+def clean_docx(input_path: str, output_path: str, remove_keys: Optional[List[str]] = None) -> None:
     """
-    Clear all core_properties from a .docx file:
-    author, last_modified_by, comments, description, keywords, subject, title.
-    Also resets revision to 1 (lowest valid value).
+    Clear core_properties from a .docx file.
+    If remove_keys is None or empty, clear all core properties.
+    Otherwise selectively clear matching fields.
     """
     from docx import Document
 
     doc = Document(input_path)
     props = doc.core_properties
 
-    # Clear text fields
-    props.author = ""
-    props.last_modified_by = ""
-    props.comments = ""
-    props.description = ""
-    props.keywords = ""
-    props.subject = ""
-    props.title = ""
-
-    # Reset revision counter — python-docx exposes it as an int
-    try:
-        props.revision = 1
-    except (AttributeError, TypeError):
-        pass  # read-only on some python-docx builds; skip silently
+    if not remove_keys:
+        # Clear all text fields
+        props.author = ""
+        props.last_modified_by = ""
+        props.comments = ""
+        props.description = ""
+        props.keywords = ""
+        props.subject = ""
+        props.title = ""
+        try:
+            props.revision = 1
+        except (AttributeError, TypeError):
+            pass
+    else:
+        keys_set = set(k.lower() for k in remove_keys)
+        if "author" in keys_set:
+            props.author = ""
+        if "last_modified_by" in keys_set:
+            props.last_modified_by = ""
+        if "comments" in keys_set:
+            props.comments = ""
+        if "description" in keys_set:
+            props.description = ""
+        if "keywords" in keys_set:
+            props.keywords = ""
+        if "subject" in keys_set:
+            props.subject = ""
+        if "title" in keys_set:
+            props.title = ""
+        if "revision" in keys_set:
+            try:
+                props.revision = 1
+            except (AttributeError, TypeError):
+                pass
 
     doc.save(output_path)
 
@@ -77,35 +172,88 @@ def clean_docx(input_path: str, output_path: str) -> None:
 # XLSX cleaner
 # ---------------------------------------------------------------------------
 
-def clean_xlsx(input_path: str, output_path: str) -> None:
+def clean_xlsx(input_path: str, output_path: str, remove_keys: Optional[List[str]] = None) -> None:
     """
-    Clear workbook properties (creator, lastModifiedBy, description,
-    subject, title, keywords) from an .xlsx/.xlsm workbook and remove any
-    hidden worksheets (hidden content itself is the risk — not just its
-    visibility).
+    Clear workbook properties, hidden sheets, hidden rows/columns, and external
+    formulas based on remove_keys. If remove_keys is None or empty, clean all.
     """
     import openpyxl
+
+    keys_set = set(k.lower() for k in remove_keys) if remove_keys else None
+
+    # Load data_only copy to retrieve cached calculated values for external formulas
+    try:
+        wb_data = openpyxl.load_workbook(input_path, data_only=True)
+    except Exception:
+        wb_data = None
 
     wb = openpyxl.load_workbook(input_path, keep_vba=True)
     props = wb.properties
 
-    # Clear identity / descriptive fields
-    props.creator = ""
-    props.lastModifiedBy = ""
-    props.description = ""
-    props.subject = ""
-    props.title = ""
-    props.keywords = ""
+    # Identity / descriptive fields
+    if not keys_set or "creator" in keys_set or "author" in keys_set:
+        props.creator = ""
+    if not keys_set or "last_modified_by" in keys_set or "lastmodifiedby" in keys_set:
+        props.lastModifiedBy = ""
+    if not keys_set or "description" in keys_set:
+        props.description = ""
+    if not keys_set or "subject" in keys_set:
+        props.subject = ""
+    if not keys_set or "title" in keys_set:
+        props.title = ""
+    if not keys_set or "keywords" in keys_set:
+        props.keywords = ""
 
-    # Remove hidden sheets — a hidden sheet can contain formulas, data,
-    # or personal notes that are invisible in a normal spreadsheet view.
-    hidden = [
-        ws.title
-        for ws in wb.worksheets
-        if ws.sheet_state in ("hidden", "veryHidden")
-    ]
-    for sheet_name in hidden:
-        del wb[sheet_name]
+    # Hidden sheets
+    if not keys_set or "hidden_sheets" in keys_set:
+        hidden = [
+            ws.title
+            for ws in wb.worksheets
+            if ws.sheet_state in ("hidden", "veryHidden")
+        ]
+        for sheet_name in hidden:
+            del wb[sheet_name]
+
+    # Unhide hidden rows & columns
+    clean_rows_cols = not keys_set or any(
+        k in keys_set for k in ("hidden_rows_cols", "hidden_rows", "hidden_columns")
+    )
+    clean_ext_refs = not keys_set or any(
+        k in keys_set for k in ("external_references", "external_links")
+    )
+
+    for ws in wb.worksheets:
+        if clean_rows_cols:
+            for rd in ws.row_dimensions.values():
+                rd.hidden = False
+            for cd in ws.column_dimensions.values():
+                cd.hidden = False
+
+        if clean_ext_refs:
+            for row in ws.iter_rows(values_only=False):
+                for cell in row:
+                    val = str(cell.value or "")
+                    if val.startswith("=") and "[" in val:
+                        cached_val = None
+                        if wb_data and ws.title in wb_data.sheetnames:
+                            try:
+                                cached_val = wb_data[ws.title][cell.coordinate].value
+                            except Exception:
+                                cached_val = None
+
+                        if cached_val is not None and not str(cached_val).startswith("="):
+                            cell.value = cached_val
+                        else:
+                            cell.value = re.sub(r"\[[^\]]+\.(?:xlsx|xlsm|xlsb|xls)\]", "", val)
+
+    if clean_ext_refs and hasattr(wb, "_external_links"):
+        try:
+            wb._external_links = []
+        except Exception:
+            pass
+
+    if wb_data:
+        wb_data.close()
 
     wb.save(output_path)
 
@@ -114,36 +262,52 @@ def clean_xlsx(input_path: str, output_path: str) -> None:
 # PDF cleaner
 # ---------------------------------------------------------------------------
 
-def clean_pdf(input_path: str, output_path: str) -> None:
+def clean_pdf(input_path: str, output_path: str, remove_keys: Optional[List[str]] = None) -> None:
     """
-    Strip /Info dictionary and XMP metadata stream from a PDF.
-
-    pikepdf gives direct access to both the document information dictionary
-    and the XMP metadata packet — clearing both is necessary because many
-    PDF generators write the same data to both locations.
+    Strip /Info dictionary and XMP metadata stream from a PDF based on remove_keys.
+    If remove_keys is None or empty, clean all PDF metadata.
     """
     import pikepdf
 
-    with pikepdf.open(input_path) as pdf:
-        # Clear the /Info dictionary (author, producer, creator, dates, …)
-        if "/Info" in pdf.trailer:
-            # Remove each key individually so pikepdf doesn't keep a stub
-            info_obj = pdf.trailer["/Info"]
-            for key in list(info_obj.keys()):
-                del info_obj[key]
+    keys_set = set(k.lower() for k in remove_keys) if remove_keys else None
 
-        # Clear XMP metadata stream
-        try:
-            with pdf.open_metadata(set_pikepdf_as_editor=False) as meta:
-                # Iterate over all keys and remove them
-                keys = list(meta.keys())
-                for k in keys:
-                    try:
-                        del meta[k]
-                    except Exception:
-                        pass
-        except Exception:
-            # open_metadata can fail on malformed or encrypted PDFs; skip
-            pass
+    key_map = {
+        "author": "/Author",
+        "producer": "/Producer",
+        "creator": "/Creator",
+        "title": "/Title",
+        "creation_date": "/CreationDate",
+        "datetime": "/CreationDate",
+        "date": "/CreationDate",
+        "mod_date": "/ModDate",
+        "keywords": "/Keywords",
+        "subject": "/Subject",
+    }
+
+    with pikepdf.open(input_path) as pdf:
+        if "/Info" in pdf.trailer:
+            info_obj = pdf.trailer["/Info"]
+            if not keys_set:
+                for key in list(info_obj.keys()):
+                    del info_obj[key]
+            else:
+                for req_key in keys_set:
+                    pdf_key = key_map.get(req_key)
+                    if pdf_key and pdf_key in info_obj:
+                        del info_obj[pdf_key]
+
+        # XMP Metadata stream
+        if not keys_set or "xmp" in keys_set:
+            try:
+                with pdf.open_metadata(set_pikepdf_as_editor=False) as meta:
+                    keys = list(meta.keys())
+                    for k in keys:
+                        try:
+                            del meta[k]
+                        except Exception:
+                            pass
+            except Exception:
+                pass
 
         pdf.save(output_path)
+

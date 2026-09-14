@@ -141,6 +141,11 @@
       border-radius: var(--radius);
       padding: 1.5rem;
       box-shadow: 0 4px 6px -1px rgba(0,0,0,.2), 0 2px 4px -2px rgba(0,0,0,.2);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 12px -2px rgba(0,0,0,.3);
     }
 
     .card-header {
@@ -339,6 +344,13 @@
       <div class="page-header">
         <h2>Scan &amp; Clean</h2>
         <p>Upload a file to extract hidden metadata, score privacy risk, and download a clean copy.</p>
+        <div style="font-size: .8rem; color: var(--text-muted); margin-top: .6rem; display: flex; gap: .75rem;">
+          <span>🔍 4 file types</span>
+          <span>·</span>
+          <span>🧠 ML risk scoring</span>
+          <span>·</span>
+          <span>🧹 One-click cleaning</span>
+        </div>
       </div>
 
       <!-- Upload card -->
@@ -396,8 +408,20 @@
     <div id="page-cross" class="page">
 
       <div class="page-header">
+        <div style="margin-bottom: .75rem;">
+          <span class="badge" style="background:rgba(168,85,247,.15);color:#d8b4fe;border-color:rgba(168,85,247,.4);font-size:.75rem;">
+            🌍 Powered by real address resolution — not just GPS distance
+          </span>
+        </div>
         <h2>Cross-File Location Check</h2>
         <p>Upload multiple files — DBSCAN with Haversine distance (250 m radius) uncovers shared location patterns that might reveal sensitive addresses or routines.</p>
+        <div style="font-size: .8rem; color: var(--text-muted); margin-top: .6rem; display: flex; gap: .75rem;">
+          <span>📍 Real address matching</span>
+          <span>·</span>
+          <span>🗺️ Live map view</span>
+          <span>·</span>
+          <span>🔗 Pattern detection across files</span>
+        </div>
       </div>
 
       <section class="card" style="border-left:4px solid var(--purple)">
@@ -477,6 +501,23 @@
         .replace(/'/g, '&#039;');
     }
 
+    function getFileIcon(filename) {
+      if (!filename) return '📄';
+      const ext = filename.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'tiff', 'tif', 'heic'].includes(ext)) return '📷';
+      if (['xlsx', 'xls'].includes(ext)) return '📊';
+      return '📄';
+    }
+
+    function getFieldIcon(field, rawKey) {
+      const text = (String(field) + ' ' + String(rawKey)).toLowerCase();
+      if (['gps', 'latitude', 'longitude', 'location', 'altitude'].some(x => text.includes(x))) return '📍';
+      if (['author', 'creator', 'last_modified_by', 'artist', 'copyright', 'identity'].some(x => text.includes(x))) return '👤';
+      if (['datetime', 'created', 'modified', 'date', 'timestamp', 'time'].some(x => text.includes(x))) return '🕐';
+      if (['device', 'software', 'make', 'model', 'producer', 'generator', 'application'].some(x => text.includes(x))) return '🔧';
+      return '🏷️';
+    }
+
     // ══════════════════════════════════════════
     //  Render metadata report
     // ══════════════════════════════════════════
@@ -519,11 +560,118 @@
           </div>`;
       }
 
+      let thumbCardHtml = '';
+      if (report.raw_metadata && report.raw_metadata.thumbnail_b64 && selectedFile) {
+        const previewUrl = URL.createObjectURL(selectedFile);
+        thumbCardHtml = `
+          <div class="meta-item high" style="margin-bottom:1rem;flex-direction:column;align-items:stretch;gap:.8rem;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);padding:1.1rem;border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:.75rem">
+                <input type="checkbox" class="clean-checkbox" data-raw-key="thumbnail" checked style="width:1.1rem;height:1.1rem;cursor:pointer;accent-color:var(--primary)" title="Select to clean this feature">
+                <div style="font-weight:700;font-size:1rem;color:#fca5a5">
+                  ⚠️ EXIF Thumbnail Privacy Risk Detected
+                </div>
+              </div>
+              <span class="meta-badge" style="background:rgba(239,68,68,.3);color:#ef4444;border:1px solid #ef4444">EXPOSED ORIGINAL</span>
+            </div>
+            <div style="font-size:.85rem;color:var(--text-muted)">
+              The visible photo has been edited or cropped, but the original un-cropped photo is still embedded inside the EXIF metadata.
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.4rem">
+              <div style="background:rgba(0,0,0,.3);padding:.75rem;border-radius:6px;text-align:center">
+                <div style="font-size:.78rem;font-weight:600;color:#94a3b8;margin-bottom:.5rem">SHARED IMAGE (VISIBLE)</div>
+                <img src="${previewUrl}" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:4px;border:1px solid var(--border-color)" />
+              </div>
+              <div style="background:rgba(0,0,0,.3);padding:.75rem;border-radius:6px;text-align:center;border:1px solid rgba(239,68,68,.3)">
+                <div style="font-size:.78rem;font-weight:600;color:#fca5a5;margin-bottom:.5rem">HIDDEN IN EXIF METADATA</div>
+                <img src="${report.raw_metadata.thumbnail_b64}" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:4px;border:1px solid rgba(239,68,68,.5)" onerror="this.parentElement.style.display='none'" />
+              </div>
+            </div>
+          </div>`;
+      }
+
+      let xlsxCardHtml = '';
+      if (report.raw_metadata && (report.raw_metadata.hidden_rows_cols || report.raw_metadata.external_references)) {
+        const raw = report.raw_metadata;
+        let rowsColsLines = '';
+        if (raw.hidden_rows_cols && raw.hidden_rows_cols.length > 0) {
+          rowsColsLines = raw.hidden_rows_cols.map(item => {
+            const parts = [];
+            if (item.hidden_rows && item.hidden_rows.length > 0) parts.push(`${item.hidden_rows.length} row(s) [${item.hidden_rows.join(', ')}]`);
+            if (item.hidden_columns && item.hidden_columns.length > 0) parts.push(`${item.hidden_columns.length} col(s) [${item.hidden_columns.join(', ')}]`);
+            return `<div style="font-size:.85rem;color:#fcd34d">Sheet <strong>"${escapeHtml(item.sheet)}"</strong>: ${parts.join(', ')}</div>`;
+          }).join('');
+        }
+
+        let extRefsLines = '';
+        if (raw.external_references && raw.external_references.length > 0) {
+          extRefsLines = raw.external_references.map(ref =>
+            `<div style="font-size:.85rem;color:#fca5a5;font-family:monospace;word-break:break-all">🔗 ${escapeHtml(ref)}</div>`
+          ).join('');
+        }
+
+        xlsxCardHtml = `
+          <div class="meta-item high" style="margin-bottom:1rem;flex-direction:column;align-items:stretch;gap:.8rem;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08);padding:1.1rem;border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:.75rem">
+                <input type="checkbox" class="clean-checkbox" data-raw-key="${raw.hidden_rows_cols ? 'hidden_rows_cols,' : ''}${raw.external_references ? 'external_references' : ''}" checked style="width:1.1rem;height:1.1rem;cursor:pointer;accent-color:var(--primary)" title="Select to clean this feature">
+                <div style="font-weight:700;font-size:1rem;color:#fcd34d">
+                  📊 Spreadsheet Hidden Structure & External Links
+                </div>
+              </div>
+              <span class="meta-badge" style="background:rgba(245,158,11,.3);color:#f59e0b;border:1px solid #f59e0b">RISK DETECTED</span>
+            </div>
+            ${rowsColsLines ? `
+              <div style="background:rgba(0,0,0,.3);padding:.75rem;border-radius:6px">
+                <div style="font-size:.78rem;font-weight:600;color:#94a3b8;margin-bottom:.4rem">HIDDEN ROWS & COLUMNS:</div>
+                ${rowsColsLines}
+              </div>` : ''}
+            ${extRefsLines ? `
+              <div style="background:rgba(0,0,0,.3);padding:.75rem;border-radius:6px">
+                <div style="font-size:.78rem;font-weight:600;color:#fca5a5;margin-bottom:.4rem">EXTERNAL FILE REFERENCES:</div>
+                ${extRefsLines}
+              </div>` : ''}
+          </div>`;
+      }
+
+      let pdfCardHtml = '';
+      if (report.raw_metadata && report.raw_metadata.has_fake_redactions && report.raw_metadata.fake_redaction_details) {
+        const details = report.raw_metadata.fake_redaction_details;
+        const totalCount = report.raw_metadata.total_fake_redactions || details.reduce((sum, item) => sum + item.count, 0);
+
+        const pageLines = details.map(item =>
+          `<div style="font-size:.85rem;color:#fca5a5">Page <strong>${item.page}</strong>: ${item.count} text element(s) covered by opaque vector shape</div>`
+        ).join('');
+
+        pdfCardHtml = `
+          <div class="meta-item high" style="margin-bottom:1rem;flex-direction:column;align-items:stretch;gap:.8rem;border:2px solid #ef4444;background:rgba(239,68,68,.12);padding:1.2rem;border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:800;font-size:1.05rem;color:#fca5a5;display:flex;align-items:center;gap:.4rem">
+                🚨 CRITICAL: Fake Redaction (Unsanitized Text Overlays)
+              </div>
+              <span class="meta-badge" style="background:#ef4444;color:#ffffff;font-weight:700;padding:.25rem .6rem">CRITICAL LEAK</span>
+            </div>
+            <div style="font-size:.88rem;color:#fee2e2;line-height:1.5">
+              Black rectangles or shapes have been drawn over text, but the text remains in the PDF stream and is fully extractable via copy-paste.
+            </div>
+            <div style="background:rgba(0,0,0,.35);padding:.8rem;border-radius:6px;border:1px solid rgba(239,68,68,.4)">
+              <div style="font-size:.78rem;font-weight:700;color:#fca5a5;margin-bottom:.4rem;letter-spacing:.03em">AFFECTED PAGES &amp; OVERLAY COUNTS (${totalCount} TOTAL):</div>
+              ${pageLines}
+            </div>
+            <div style="font-size:.78rem;color:#fca5a5;background:rgba(239,68,68,.2);padding:.5rem .75rem;border-radius:4px;border-left:3px solid #ef4444">
+              <strong>Action Required:</strong> This finding cannot be automatically cleaned without corrupting PDF layout. Use a certified PDF redaction tool to burn-in or rasterize redactions before sharing.
+            </div>
+          </div>`;
+      }
+
       let html = `
         ${overallHtml}
+        ${pdfCardHtml}
+        ${thumbCardHtml}
+        ${xlsxCardHtml}
         <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;border-bottom:1px solid var(--border-color);padding-bottom:.75rem">
           <div>
-            <strong style="color:var(--text-main);font-size:.95rem">${escapeHtml(filename)}</strong>
+            <strong style="color:var(--text-main);font-size:.95rem">${getFileIcon(filename)} ${escapeHtml(filename)}</strong>
             <span style="color:var(--text-muted);font-size:.8rem;margin-left:.5rem">(${file_type.toUpperCase()})</span>
           </div>
           <div style="display:flex;gap:.5rem;font-size:.75rem">
@@ -532,14 +680,20 @@
             ${safeCount  > 0 ? `<span style="background:rgba(34,197,94,.2);color:var(--success);padding:.2rem .5rem;border-radius:4px;font-weight:600">${safeCount} Safe</span>` : ''}
           </div>
         </div>
+        <div style="margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem">
+          <input type="checkbox" id="toggle-all-meta" style="width:1.1rem;height:1.1rem;cursor:pointer;accent-color:var(--primary)">
+          <label for="toggle-all-meta" style="font-size:.85rem;font-weight:600;cursor:pointer;user-select:none">Select fields to clean (High/Medium risks are pre-selected)</label>
+        </div>
         <div class="meta-list">`;
 
       metadata.forEach(item => {
         const cat = (item.category || 'safe').toLowerCase();
+        const isChecked = (cat === 'high' || cat === 'medium') ? 'checked' : '';
         html += `
-          <div class="meta-item ${cat}">
+          <div class="meta-item ${cat}" style="align-items:center">
+            <input type="checkbox" class="clean-checkbox" data-raw-key="${escapeHtml(item.raw_key)}" ${isChecked} style="width:1.1rem;height:1.1rem;cursor:pointer;accent-color:var(--primary);flex-shrink:0" title="Select to clean this feature">
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:.85rem;margin-bottom:.2rem">${escapeHtml(item.field)}</div>
+              <div style="font-weight:600;font-size:.85rem;margin-bottom:.2rem">${getFieldIcon(item.field, item.raw_key)} ${escapeHtml(item.field)}</div>
               <div style="word-break:break-word;font-size:.9rem;opacity:.95">${escapeHtml(item.value)}</div>
               <div style="font-size:.72rem;opacity:.6;margin-top:.25rem">Key: ${escapeHtml(item.raw_key)}</div>
             </div>
@@ -549,6 +703,16 @@
 
       html += '</div>';
       results.innerHTML = html;
+
+      // Bind toggle all
+      const toggleAll = document.getElementById('toggle-all-meta');
+      if (toggleAll) {
+        toggleAll.addEventListener('change', (e) => {
+          document.querySelectorAll('.clean-checkbox').forEach(cb => {
+            cb.checked = e.target.checked;
+          });
+        });
+      }
     }
 
     // ══════════════════════════════════════════
@@ -623,12 +787,20 @@
     cleanBtn.addEventListener('click', async () => {
       if (!selectedFile) return;
 
+      const checkedBoxes = Array.from(document.querySelectorAll('.clean-checkbox:checked'));
+      if (checkedBoxes.length === 0) {
+        alert("Please select at least one metadata field to clean.");
+        return;
+      }
+      const keysToClean = checkedBoxes.map(cb => cb.dataset.rawKey).filter(k => k).join(',');
+
       const origText    = cleanBtn.textContent;
       cleanBtn.disabled = true;
       cleanBtn.textContent = 'Cleaning...';
 
       const fd = new FormData();
       fd.append('file', selectedFile);
+      fd.append('keys', keysToClean);
 
       try {
         const resp = await fetch(`${BACKEND_URL}/clean`, { method: 'POST', body: fd });
@@ -711,27 +883,27 @@
 
         beforeRows += `
           <div class="compare-field risk-${cat}">
-            <span class="field-name">${escapeHtml(field.field)}</span>
+            <span class="field-name">${getFieldIcon(field.field, field.raw_key)} ${escapeHtml(field.field)}</span>
             <span class="field-value">${escapeHtml(field.value)}</span>
           </div>`;
 
         if (!inAfter && (cat === 'high' || cat === 'medium')) {
           afterRows += `
             <div class="compare-field removed">
-              <span class="field-name">${escapeHtml(field.field)}</span>
+              <span class="field-name">${getFieldIcon(field.field, field.raw_key)} ${escapeHtml(field.field)}</span>
               <span class="field-value" style="opacity:.45">null</span>
             </div>`;
         } else if (inAfter) {
           const aCat = (inAfter.category || 'safe').toLowerCase();
           afterRows += `
             <div class="compare-field risk-${aCat}">
-              <span class="field-name">${escapeHtml(inAfter.field)}</span>
+              <span class="field-name">${getFieldIcon(inAfter.field, inAfter.raw_key)} ${escapeHtml(inAfter.field)}</span>
               <span class="field-value">${escapeHtml(inAfter.value)}</span>
             </div>`;
         } else {
           afterRows += `
             <div class="compare-field removed">
-              <span class="field-name">${escapeHtml(field.field)}</span>
+              <span class="field-name">${getFieldIcon(field.field, field.raw_key)} ${escapeHtml(field.field)}</span>
               <span class="field-value" style="opacity:.45">null</span>
             </div>`;
         }
@@ -744,7 +916,7 @@
       body.innerHTML = `
         <div class="compare-col before">
           <div class="compare-col-header">
-            <span>&#128308; BEFORE &mdash; Original</span>
+            <span>&#128308; BEFORE &mdash; ${getFileIcon(before.filename)} ${escapeHtml(before.filename || 'Original')}</span>
             <span class="meta-badge" style="${badgeStyle(beforeRisk)}">${beforeRisk.toUpperCase()} RISK</span>
           </div>
           ${beforeRows || '<div style="color:var(--text-muted);font-size:.85rem">No metadata detected.</div>'}
@@ -856,17 +1028,59 @@
         <div class="meta-list">`;
 
       clusters.forEach((cluster, idx) => {
+        const lat = cluster.center_lat;
+        const lon = cluster.center_lon;
+        const offset = 0.01;
+        const bbox = `${lon - offset}%2C${lat - offset}%2C${lon + offset}%2C${lat + offset}`;
+        const marker = `${lat}%2C${lon}`;
+        const embedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+        const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`;
+
+        let addressHtml = '';
+        if (cluster.matched_address) {
+          addressHtml = `
+            <div style="font-weight:800;font-size:1.15rem;color:#fca5a5;margin-bottom:.1rem;line-height:1.3">
+              📍 ${escapeHtml(cluster.matched_address)}
+            </div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.5rem">
+              Coordinates: ${lat}, ${lon}
+            </div>
+          `;
+        } else {
+          addressHtml = `
+            <div style="font-size:.85rem;color:var(--text-muted);font-style:italic;margin-bottom:.5rem">
+              Address lookup unavailable — matched by distance only
+            </div>
+            <div style="font-size:.75rem;color:#fca5a5;margin-bottom:.5rem">
+              Coordinates: ${lat}, ${lon}
+            </div>
+          `;
+        }
+
         html += `
-          <div class="meta-item high" style="flex-direction:column;align-items:stretch;gap:.6rem">
+          <div class="meta-item high" style="flex-direction:column;align-items:stretch;gap:.6rem;padding:1.25rem">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <strong>Cluster #${idx + 1} (Shared within ${cluster.radius_meters}m)</strong>
+              <strong style="color:#ef4444">Cluster #${idx + 1} (Shared within ${cluster.radius_meters}m)</strong>
               <span class="meta-badge">${cluster.files.length} FILES</span>
             </div>
-            <div style="font-size:.85rem;color:#fca5a5">
-              Center: <strong>Lat ${cluster.center_lat}, Lon ${cluster.center_lon}</strong>
+            ${addressHtml}
+            <div style="margin-top:.25rem;margin-bottom:.25rem">
+              <iframe 
+                width="100%" 
+                height="220" 
+                frameborder="0" 
+                scrolling="no" 
+                marginheight="0" 
+                marginwidth="0" 
+                src="${embedUrl}" 
+                style="border:1px solid var(--border-color);border-radius:var(--radius);">
+              </iframe>
+              <div style="text-align:right;margin-top:.35rem">
+                <a href="${mapUrl}" target="_blank" style="color:var(--primary);font-size:.8rem;text-decoration:none;font-weight:600">Open in Maps ↗</a>
+              </div>
             </div>
             <div style="font-size:.85rem;background:rgba(0,0,0,.25);padding:.5rem .75rem;border-radius:4px">
-              <strong>Linked Files:</strong> ${cluster.files.map(f => escapeHtml(f)).join(', ')}
+              <strong>Linked Files:</strong> ${cluster.files.map(f => `${getFileIcon(f)} ${escapeHtml(f)}`).join('<span style="opacity:0.3;margin:0 .4rem">|</span>')}
             </div>
           </div>`;
       });

@@ -98,7 +98,7 @@ def make_docx(filename, author="Priya Shalini", last_modified_by="Bahutharivu M 
 
 
 def make_xlsx(filename, creator="R.M. Mizoni", last_modified_by="Bahutharivu M A"):
-    """Create an XLSX with visible + hidden sheet, plus creator metadata."""
+    """Create an XLSX with visible + hidden sheet, hidden row/col, external formula ref, and creator metadata."""
     from openpyxl import Workbook
     import datetime
 
@@ -110,10 +110,17 @@ def make_xlsx(filename, creator="R.M. Mizoni", last_modified_by="Bahutharivu M A
     ws1["A2"] = "South"
     ws1["B2"] = 452000
 
+    # Add hidden row 5 & hidden column D (Phase 7 test features)
+    ws1["A5"] = "Confidential Row 5"
+    ws1["B5"] = "='C:\\Users\\jsmith\\Documents\\[Financial_Model_2025.xlsx]Q4_Summary'!B12 + 452000"
+    ws1.row_dimensions[5].hidden = True
+    ws1["D1"] = "Secret Column D"
+    ws1.column_dimensions["D"].hidden = True
+
     ws2 = wb.create_sheet("Internal_Notes")
     ws2["A1"] = "Client salary band: confidential"
     ws2["A2"] = "Internal margin: 34%"
-    ws2.sheet_state = "hidden"  # <-- this is the "hidden sheet" risk signal
+    ws2.sheet_state = "hidden"  # <-- hidden sheet risk signal
 
     wb.properties.creator = creator
     wb.properties.lastModifiedBy = last_modified_by
@@ -122,7 +129,7 @@ def make_xlsx(filename, creator="R.M. Mizoni", last_modified_by="Bahutharivu M A
 
     path = os.path.join(OUT_DIR, filename)
     wb.save(path)
-    print(f"[ok] {path}  (hidden sheet: Internal_Notes, creator={creator})")
+    print(f"[ok] {path}  (hidden sheet: Internal_Notes, hidden row 5, hidden col D, external ref formula, creator={creator})")
 
 
 def make_pdf(filename, author="Bahutharivu M A", producer="Microsoft Word",
@@ -147,6 +154,79 @@ def make_pdf(filename, author="Bahutharivu M A", producer="Microsoft Word",
     print(f"[ok] {path}  (author={author}, producer={producer})")
 
 
+def make_fake_redacted_pdf(filename="test_fake_redacted.pdf"):
+    """Create a PDF with text drawn beneath a filled black box (fake redaction) plus a literal '[REDACTED]' text."""
+    import pikepdf
+
+    pdf = pikepdf.new()
+    pdf.add_blank_page(page_size=(612, 792))
+    page = pdf.pages[0]
+
+    font = pikepdf.Dictionary({
+        "/Type": pikepdf.Name("/Font"),
+        "/Subtype": pikepdf.Name("/Type1"),
+        "/BaseFont": pikepdf.Name("/Helvetica"),
+    })
+    page.Resources = pikepdf.Dictionary({
+        "/Font": pikepdf.Dictionary({"/F1": font})
+    })
+
+    # Content stream:
+    # 1. Fake redaction: Draw text, then draw filled black rectangle on top
+    # 2. Genuine redaction: Draw text "[REDACTED]" (no rectangle)
+    stream_content = b"""
+    BT
+    /F1 14 Tf
+    100 700 Td
+    (CONFIDENTIAL ACCOUNT NUMBER 9876-5432-1098) Tj
+    ET
+    0 g
+    280 695 140 20 re f
+    BT
+    /F1 14 Tf
+    100 650 Td
+    (CLIENT NAME [REDACTED]) Tj
+    ET
+    """
+    page.Contents = pdf.make_stream(stream_content)
+
+    path = os.path.join(OUT_DIR, filename)
+    pdf.save(path)
+    print(f"[ok] {path}  (PDF fake redaction test fixture)")
+
+
+def make_cropped_thumbnail_mismatch_photo(filename="test_cropped_with_hidden_thumbnail.jpg"):
+    """Create a photo where the main image is cropped/different from the embedded EXIF thumbnail."""
+    import io
+    import piexif
+    from PIL import Image, ImageDraw
+
+    # Main visible cropped image (Green background)
+    main_img = Image.new("RGB", (640, 480), color=(34, 139, 34))
+    d1 = ImageDraw.Draw(main_img)
+    d1.text((50, 50), "CROPPED PHOTO PREVIEW (Green Background)", fill=(255, 255, 255))
+    path = os.path.join(OUT_DIR, filename)
+    main_img.save(path, "jpeg")
+
+    # Embedded EXIF thumbnail of the un-cropped original scene (Red background)
+    thumb_img = Image.new("RGB", (160, 120), color=(178, 34, 34))
+    d2 = ImageDraw.Draw(thumb_img)
+    d2.text((10, 10), "ORIGINAL UN-CROPPED\nFULL SCENE\n(Red Background)", fill=(255, 255, 255))
+    t_buf = io.BytesIO()
+    thumb_img.save(t_buf, "jpeg")
+
+    exif_dict = {
+        "0th": {piexif.ImageIFD.Make: "Apple", piexif.ImageIFD.Model: "iPhone 14"},
+        "Exif": {},
+        "GPS": {},
+        "1st": {},
+        "thumbnail": t_buf.getvalue(),
+    }
+    exif_bytes = piexif.dump(exif_dict)
+    piexif.insert(exif_bytes, path)
+    print(f"[ok] {path}  (Embedded EXIF thumbnail mismatch test file)")
+
+
 if __name__ == "__main__":
     # Two photos with GPS coords ~80m apart -> same real-world location.
     # Use these to demo the Phase 3 K-Means cross-file location clustering:
@@ -160,9 +240,12 @@ if __name__ == "__main__":
     make_photo("big_building_a.jpg", lat=12.9909, lon=80.2176)
     make_photo("big_building_b.jpg", lat=12.9930, lon=80.2198)
     
+    make_cropped_thumbnail_mismatch_photo("test_cropped_with_hidden_thumbnail.jpg")
+
     make_docx("test_doc.docx")
     make_xlsx("test_sheet.xlsx")
     make_pdf("test_file.pdf")
+    make_fake_redacted_pdf("test_fake_redacted.pdf")
 
     print("\nDone. Files are in ./sample_files/")
     print("Use these to test Phase 1 (/scan on each file type)")

@@ -132,7 +132,8 @@ def extract_features(
     has_hidden_content = (
         1
         if any(
-            k in ("hidden_sheets", "has_tracked_changes") or "hidden" in k
+            k in ("hidden_sheets", "has_tracked_changes", "thumbnail_mismatch", "has_fake_redactions")
+            or "hidden" in k or "thumbnail" in k or "mismatch" in k or "redaction" in k
             for k in raw_keys
         )
         else 0

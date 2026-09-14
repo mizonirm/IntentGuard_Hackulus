@@ -5,6 +5,7 @@ exifread
 python-docx
 openpyxl
 pikepdf
+pdfplumber
 scikit-learn
 pandas
 numpy
