@@ -155,6 +155,10 @@ if __name__ == "__main__":
     make_photo("test_photo.jpg", lat=13.0827, lon=80.2707)      # Chennai pt A
     make_photo("test_photo_2.jpg", lat=13.0834, lon=80.2715)    # Chennai pt B (~100m away)
     make_photo("test_photo_far.jpg", lat=28.6139, lon=77.2090)  # Delhi - ~1,760 km from Chennai
+    # Big building / long-road test case: Phoenix MarketCity, Velachery.
+    # Points ~333.7 m apart, same road (Velachery Main Road) – matches via road+suburb.
+    make_photo("big_building_a.jpg", lat=12.9909, lon=80.2176)
+    make_photo("big_building_b.jpg", lat=12.9930, lon=80.2198)
     
     make_docx("test_doc.docx")
     make_xlsx("test_sheet.xlsx")

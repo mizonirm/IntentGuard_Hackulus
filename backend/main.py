@@ -18,7 +18,7 @@ from extractors.xlsx_extractor import extract_xlsx_metadata
 from extractors.pdf_extractor import extract_pdf_metadata
 from extractors.normalizer import normalize
 from ml.risk_scorer import score_risk
-from ml.cluster_matcher import find_location_clusters, CLUSTER_RADIUS_METERS
+from ml.cluster_matcher import find_location_clusters
 from cleaner.clean_file import clean_image, clean_docx, clean_xlsx, clean_pdf
 
 app = FastAPI(
@@ -182,11 +182,22 @@ async def cross_check_locations(files: List[UploadFile] = File(...)):
     clusters_found = len(clusters)
 
     if clusters_found > 0:
-        total_clustered = sum(len(c["files"]) for c in clusters)
-        message = (
-            f"{total_clustered} files share a location within {int(CLUSTER_RADIUS_METERS)}m "
-            "— this may reveal an address or routine location even though neither file alone looked risky."
-        )
+        # Build detailed per-cluster messages
+        lines = []
+        for cl in clusters:
+            cid = cl.get("cluster_id")
+            files = cl.get("files", [])
+            n = len(files)
+            addr = cl.get("matched_address", "")
+            if addr:
+                lines.append(
+                    f"Cluster {cid}: {n} files ({', '.join(files)}) share a location — matched to {addr}."
+                )
+            else:
+                lines.append(
+                    f"Cluster {cid}: {n} files ({', '.join(files)}) share a location within 250m."
+                )
+        message = "\n".join(lines)
     else:
         message = "No shared locations detected across uploaded files."
 

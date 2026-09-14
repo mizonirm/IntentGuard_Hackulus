@@ -118,25 +118,25 @@ def find_location_clusters(gps_points: List[Dict[str, Any]]) -> List[Dict[str, A
             for j, info_j in enumerate(point_infos):
                 if i == j:
                     continue
-                # Try address‑based comparison first
-                if addresses_match(info_i["addr"], info_j["addr"]):
+                dist = haversine_distance(
+                    info_i["point"]["lat"], info_i["point"]["lon"],
+                    info_j["point"]["lat"], info_j["point"]["lon"]
+                )
+                # 1. Direct physical proximity check (within 250m)
+                if dist <= 250.0:
+                    matched = True
+                    if not representative_addr:
+                        if info_i["addr"] and info_i["addr"].get("display_name"):
+                            representative_addr = info_i["addr"].get("display_name")
+                        elif info_j["addr"] and info_j["addr"].get("display_name"):
+                            representative_addr = info_j["addr"].get("display_name")
+                    break
+                # 2. Extended address-based matching for points between 250m and 1000m
+                elif addresses_match(info_i["addr"], info_j["addr"]):
                     matched = True
                     if not representative_addr and info_i["addr"]:
                         representative_addr = info_i["addr"].get("display_name")
                     break
-                # Fallback to distance‑only if either address lookup failed
-                if not info_i["addr"] or not info_j["addr"]:
-                    dist = haversine_distance(
-                        info_i["point"]["lat"], info_i["point"]["lon"],
-                        info_j["point"]["lat"], info_j["point"]["lon"]
-                    )
-                    if dist <= 250.0:
-                        matched = True
-                        print(
-                            f"Warning: address lookup failed for point {info_i['point']['filename']} "
-                            f"or {info_j['point']['filename']}; falling back to 250m distance check."
-                        )
-                        break
             if matched:
                 retained.append(info_i["point"])
 
