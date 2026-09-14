@@ -3,94 +3,144 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IntentGuard — Metadata Scanner & Cleaner</title>
+  <title>IntentGuard — Metadata Scanner &amp; Cleaner</title>
   <style>
     :root {
-      --bg-color: #0f172a;
-      --card-bg: #1e293b;
+      --bg-color:     #0f172a;
+      --sidebar-bg:   #0b1120;
+      --card-bg:      #1e293b;
       --border-color: #334155;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --primary: #38bdf8;
-      --primary-hover: #0ea5e9;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-      --radius: 10px;
+      --text-main:    #f8fafc;
+      --text-muted:   #94a3b8;
+      --primary:      #38bdf8;
+      --primary-hover:#0ea5e9;
+      --success:      #22c55e;
+      --warning:      #f59e0b;
+      --danger:       #ef4444;
+      --purple:       #a855f7;
+      --purple-light: #c084fc;
+      --radius:       10px;
+      --sidebar-w:    230px;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
+    /* ── App shell ── */
     body {
-      background-color: var(--bg-color);
+      background: var(--bg-color);
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem 1rem;
     }
 
-    header {
-      text-align: center;
-      margin-bottom: 2rem;
-      max-width: 720px;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-      border: 1px solid var(--border-color);
-    }
-
-    .badge-primary {
-      background-color: rgba(56, 189, 248, 0.1);
-      color: var(--primary);
-      border-color: rgba(56, 189, 248, 0.3);
-    }
-
-    h1 {
-      font-size: 2.25rem;
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      margin-bottom: 0.5rem;
-    }
-
-    h1 span {
-      color: var(--primary);
-    }
-
-    p.subtitle {
-      color: var(--text-muted);
-      font-size: 1.05rem;
-      line-height: 1.5;
-    }
-
-    main {
-      width: 100%;
-      max-width: 760px;
+    /* ── Sidebar ── */
+    #sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
+      padding: 1.5rem 0;
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 100;
     }
 
+    .sidebar-logo {
+      padding: 0 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+    }
+
+    .sidebar-logo h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-logo h1 span { color: var(--primary); }
+
+    .sidebar-logo p {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .nav-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      padding: 0 1.25rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.65rem 1.25rem;
+      cursor: pointer;
+      border-radius: 0;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+      border-left: 3px solid transparent;
+      user-select: none;
+    }
+
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-main); }
+
+    .nav-item.active {
+      color: var(--text-main);
+      border-left-color: var(--primary);
+      background: rgba(56,189,248,0.08);
+    }
+
+    .nav-item.active.purple {
+      border-left-color: var(--purple);
+      background: rgba(168,85,247,0.08);
+    }
+
+    .nav-item svg { flex-shrink: 0; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 1rem 1.25rem 0;
+      border-top: 1px solid var(--border-color);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ── Main content ── */
+    #content {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 2rem;
+      max-width: 860px;
+    }
+
+    /* Page views */
+    .page { display: none; flex-direction: column; gap: 1.5rem; }
+    .page.active { display: flex; }
+
+    /* Page header */
+    .page-header { margin-bottom: 0.25rem; }
+    .page-header h2 { font-size: 1.5rem; font-weight: 700; }
+    .page-header p  { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.3rem; }
+
+    /* ── Cards ── */
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
       border-radius: var(--radius);
       padding: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,.2), 0 2px 4px -2px rgba(0,0,0,.2);
     }
 
     .card-header {
@@ -101,40 +151,16 @@
     }
 
     .card-title {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 600;
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
 
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background-color: #64748b;
-    }
-
-    .dot.connected {
-      background-color: var(--success);
-      box-shadow: 0 0 8px var(--success);
-    }
-
-    .dot.disconnected {
-      background-color: var(--danger);
-      box-shadow: 0 0 8px var(--danger);
-    }
-
+    /* ── Buttons ── */
     .btn {
-      background-color: var(--primary);
+      background: var(--primary);
       color: #0f172a;
       border: none;
       padding: 0.55rem 1.1rem;
@@ -142,359 +168,307 @@
       font-size: 0.9rem;
       border-radius: 6px;
       cursor: pointer;
-      transition: background-color 0.2s, opacity 0.2s;
+      transition: background 0.2s, opacity 0.2s;
     }
 
-    .btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { background: var(--primary-hover); }
 
-    .btn:hover:not(:disabled) {
-      background-color: var(--primary-hover);
-    }
+    .btn-secondary { background: #334155; color: var(--text-main); }
+    .btn-secondary:hover:not(:disabled) { background: #475569; }
 
-    .btn-secondary {
-      background-color: #334155;
-      color: var(--text-main);
-    }
+    .btn-purple { background: var(--purple); color: #fff; }
+    .btn-purple:hover:not(:disabled) { background: #9333ea; }
 
-    .btn-secondary:hover:not(:disabled) {
-      background-color: #475569;
-    }
-
+    /* ── Dropzone ── */
     .dropzone {
       border: 2px dashed var(--border-color);
       border-radius: var(--radius);
       padding: 2.5rem 1.5rem;
       text-align: center;
       cursor: pointer;
-      transition: border-color 0.2s, background-color 0.2s;
-      background: rgba(15, 23, 42, 0.4);
+      transition: border-color .2s, background .2s;
+      background: rgba(15,23,42,.4);
     }
 
     .dropzone:hover, .dropzone.dragover {
       border-color: var(--primary);
-      background: rgba(56, 189, 248, 0.08);
+      background: rgba(56,189,248,.08);
     }
 
-    .dropzone p {
-      color: var(--text-muted);
-      margin-top: 0.5rem;
-      font-size: 0.9rem;
+    .dropzone.purple:hover, .dropzone.purple.dragover {
+      border-color: var(--purple);
+      background: rgba(168,85,247,.08);
     }
 
-    .file-input {
-      display: none;
-    }
+    .dropzone p { color: var(--text-muted); margin-top: .5rem; font-size: .9rem; }
+    .file-input { display: none; }
 
+    /* ── Preview / results box ── */
     .preview-box {
-      background: rgba(15, 23, 42, 0.6);
+      background: rgba(15,23,42,.6);
       border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 1.25rem;
-      font-size: 0.9rem;
+      font-size: .9rem;
       color: #cbd5e1;
       max-height: 480px;
       overflow-y: auto;
     }
 
-    /* Metadata List and Risk Badges */
-    .meta-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
+    /* ── Metadata risk items ── */
+    .meta-list { display: flex; flex-direction: column; gap: .75rem; }
 
     .meta-item {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      padding: 0.85rem 1rem;
+      padding: .85rem 1rem;
       border-radius: 8px;
       border: 1px solid transparent;
       gap: 1rem;
-      transition: transform 0.15s ease;
+      transition: transform .15s ease;
     }
 
-    .meta-item:hover {
-      transform: translateX(2px);
-    }
+    .meta-item:hover { transform: translateX(2px); }
 
-    /* High Risk: Red */
-    .meta-item.high {
-      background-color: rgba(239, 68, 68, 0.12);
-      border-color: rgba(239, 68, 68, 0.35);
-      color: #fca5a5;
-    }
-
-    /* Medium Risk: Yellow */
-    .meta-item.medium {
-      background-color: rgba(245, 158, 11, 0.12);
-      border-color: rgba(245, 158, 11, 0.35);
-      color: #fde047;
-    }
-
-    /* Safe: Green */
-    .meta-item.safe {
-      background-color: rgba(34, 197, 94, 0.12);
-      border-color: rgba(34, 197, 94, 0.35);
-      color: #86efac;
-    }
+    .meta-item.high   { background: rgba(239,68,68,.12);  border-color: rgba(239,68,68,.35);  color: #fca5a5; }
+    .meta-item.medium { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.35); color: #fde047; }
+    .meta-item.safe   { background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.35);  color: #86efac; }
 
     .meta-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 0.25rem 0.6rem;
+      font-size: .7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; padding: .25rem .6rem; border-radius: 9999px; white-space: nowrap;
+    }
+
+    .meta-item.high   .meta-badge { background: rgba(239,68,68,.25);  color: #ef4444; border: 1px solid rgba(239,68,68,.45); }
+    .meta-item.medium .meta-badge { background: rgba(245,158,11,.25); color: #f59e0b; border: 1px solid rgba(245,158,11,.45); }
+    .meta-item.safe   .meta-badge { background: rgba(34,197,94,.25);  color: #22c55e; border: 1px solid rgba(34,197,94,.45); }
+
+    /* badge (pill label) */
+    .badge {
+      display: inline-block;
+      padding: .25rem .75rem;
       border-radius: 9999px;
-      white-space: nowrap;
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      border: 1px solid var(--border-color);
     }
 
-    .meta-item.high .meta-badge {
-      background-color: rgba(239, 68, 68, 0.25);
-      color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.45);
-    }
-
-    .meta-item.medium .meta-badge {
-      background-color: rgba(245, 158, 11, 0.25);
-      color: #f59e0b;
-      border: 1px solid rgba(245, 158, 11, 0.45);
-    }
-
-    .meta-item.safe .meta-badge {
-      background-color: rgba(34, 197, 94, 0.25);
-      color: #22c55e;
-      border: 1px solid rgba(34, 197, 94, 0.45);
-    }
-
-    /* =============================================
-       Before vs After Comparison Section
-    ============================================= */
-    .compare-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    @media (max-width: 600px) {
-      .compare-grid {
-        grid-template-columns: 1fr;
-      }
-    }
+    /* ── Before vs After grid ── */
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .compare-grid { grid-template-columns: 1fr; } }
 
     .compare-col {
-      border-radius: 8px;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
+      border-radius: 8px; padding: 1rem;
+      display: flex; flex-direction: column; gap: .6rem;
     }
 
-    .compare-col.before {
-      background: rgba(239, 68, 68, 0.07);
-      border: 1px solid rgba(239, 68, 68, 0.25);
-    }
-
-    .compare-col.after {
-      background: rgba(34, 197, 94, 0.07);
-      border: 1px solid rgba(34, 197, 94, 0.25);
-    }
+    .compare-col.before { background: rgba(239,68,68,.07);  border: 1px solid rgba(239,68,68,.25); }
+    .compare-col.after  { background: rgba(34,197,94,.07);  border: 1px solid rgba(34,197,94,.25); }
 
     .compare-col-header {
-      font-size: 0.78rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      padding-bottom: 0.6rem;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+      padding-bottom: .6rem; border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; justify-content: space-between; align-items: center;
     }
 
     .compare-col.before .compare-col-header { color: #fca5a5; }
     .compare-col.after  .compare-col-header { color: #86efac; }
 
     .compare-field {
-      font-size: 0.82rem;
-      padding: 0.55rem 0.7rem;
-      border-radius: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-      border: 1px solid transparent;
+      font-size: .82rem; padding: .55rem .7rem; border-radius: 6px;
+      display: flex; flex-direction: column; gap: .15rem; border: 1px solid transparent;
     }
 
     .compare-field .field-name {
-      font-weight: 600;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      opacity: 0.7;
+      font-weight: 600; font-size: .75rem; text-transform: uppercase;
+      letter-spacing: .04em; opacity: .7;
     }
 
-    .compare-field .field-value {
-      font-size: 0.88rem;
-      word-break: break-word;
-    }
+    .compare-field .field-value { font-size: .88rem; word-break: break-word; }
 
-    .compare-field.risk-high   { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.3);  color: #fca5a5; }
-    .compare-field.risk-medium { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: #fde047; }
-    .compare-field.risk-safe   { background: rgba(34,197,94,0.10);  border-color: rgba(34,197,94,0.25); color: #86efac; }
-    .compare-field.removed     { background: rgba(34,197,94,0.12);  border-color: rgba(34,197,94,0.3);  color: #86efac; }
-    .compare-field.unchanged   { background: rgba(148,163,184,0.08);border-color: rgba(148,163,184,0.2);color: #94a3b8; }
-
-    footer {
-      margin-top: 3rem;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      text-align: center;
-    }
+    .compare-field.risk-high   { background: rgba(239,68,68,.12);   border-color: rgba(239,68,68,.3);   color: #fca5a5; }
+    .compare-field.risk-medium { background: rgba(245,158,11,.12);  border-color: rgba(245,158,11,.3);  color: #fde047; }
+    .compare-field.risk-safe   { background: rgba(34,197,94,.10);   border-color: rgba(34,197,94,.25);  color: #86efac; }
+    .compare-field.removed     { background: rgba(34,197,94,.12);   border-color: rgba(34,197,94,.3);   color: #86efac; }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="badge badge-primary">Security Prototype</div>
-    <h1>Intent<span>Guard</span></h1>
-    <p class="subtitle">Scan files for hidden metadata, analyze privacy & security risks, and strip sensitive footprints before sharing.</p>
-  </header>
+  <!-- ═══ SIDEBAR ═══ -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <h1>Intent<span>Guard</span></h1>
+      <p>Metadata privacy scanner</p>
+    </div>
 
-  <main>
-    <!-- Backend Connection Card -->
-    <section class="card">
-      <div class="card-header">
-        <div class="card-title">Backend Status</div>
-        <div class="status-indicator">
-          <div id="status-dot" class="dot"></div>
-          <span id="status-text">Checking backend...</span>
+    <div class="nav-label">Tools</div>
+
+    <div class="nav-item active" id="nav-scan" onclick="showPage('scan')">
+      <!-- Shield icon -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      Scan &amp; Clean
+    </div>
+
+    <div class="nav-item purple" id="nav-cross" onclick="showPage('cross')">
+      <!-- Globe icon -->
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+        <path d="M2 12h20"/>
+      </svg>
+      Location Check
+    </div>
+
+    <div class="sidebar-footer">
+      FastAPI · scikit-learn · Vanilla JS
+    </div>
+  </nav>
+
+  <!-- ═══ CONTENT ═══ -->
+  <div id="content">
+
+    <!-- ── PAGE: Scan & Clean ── -->
+    <div id="page-scan" class="page active">
+
+      <div class="page-header">
+        <h2>Scan &amp; Clean</h2>
+        <p>Upload a file to extract hidden metadata, score privacy risk, and download a clean copy.</p>
+      </div>
+
+      <!-- Upload card -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Upload &amp; Analyze File</div>
         </div>
-      </div>
-      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
-        Testing connection to FastAPI endpoint (<code style="color: var(--primary);">/health</code> on port 8000).
-      </p>
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <button id="check-btn" class="btn btn-secondary">Recheck Connection</button>
-        <span id="ping-details" style="color: var(--text-muted); font-size: 0.8rem;"></span>
-      </div>
-    </section>
-
-    <!-- File Upload / Dropzone -->
-    <section class="card">
-      <div class="card-header">
-        <div class="card-title">Upload & Analyze File</div>
-      </div>
-      <div class="dropzone" id="dropzone">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-bottom: 0.5rem;">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
-        <div style="font-weight: 600; font-size: 1rem;">Click or drag file here to scan</div>
-        <p>Supports Images (.jpg, .png), Word (.docx), Excel (.xlsx), and PDF (.pdf)</p>
-        <input type="file" id="file-input" class="file-input">
-      </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.5rem;">
-        <label for="context-select" style="font-size: 0.88rem; color: var(--text-muted); font-weight: 500;">
-          Target Sharing Context:
-        </label>
-        <select id="context-select" style="background: #0f172a; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; outline: none; cursor: pointer;">
-          <option value="public" selected>Public (External / Web)</option>
-          <option value="team">Team (Internal Collaborators)</option>
-          <option value="anonymous">Anonymous (Full Privacy)</option>
-        </select>
-      </div>
-    </section>
-
-    <!-- Analysis & Cleaner Output -->
-    <section class="card">
-      <div class="card-header">
-        <div class="card-title">Metadata & Risk Analysis</div>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-          <button id="scan-btn" class="btn btn-secondary" style="display: none;">Scan</button>
-          <button id="clean-btn" class="btn" disabled>Clean Metadata</button>
-        </div>
-      </div>
-      <div id="results" class="preview-box">No file selected. Ready for scan...</div>
-    </section>
-
-    <!-- Before vs After Comparison (shown after Clean) -->
-    <section id="compare-section" class="card" style="display:none; border-left: 4px solid var(--success);">
-      <div class="card-header">
-        <div class="card-title" style="color: var(--success);">Before vs After Cleaning</div>
-        <span id="compare-summary" class="badge" style="background: rgba(34,197,94,0.15); color: #22c55e; border-color: rgba(34,197,94,0.4);"></span>
-      </div>
-      <div id="compare-body" class="compare-grid"></div>
-    </section>
-
-    <!-- Cross-File Location Check (GPS Clustering) -->
-    <section class="card" style="border-left: 4px solid #a855f7;">
-      <div class="card-header">
-        <div class="card-title" style="color: #d8b4fe;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
-            <path d="M2 12h20"></path>
+        <div class="dropzone" id="dropzone">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);margin-bottom:.5rem">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
-          Cross-File Location Check
+          <div style="font-weight:600;font-size:1rem">Click or drag file here to scan</div>
+          <p>Supports Images (.jpg, .png), Word (.docx), Excel (.xlsx), and PDF (.pdf)</p>
+          <input type="file" id="file-input" class="file-input">
         </div>
-        <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.4);">
-          DBSCAN Clustering
-        </span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-color);flex-wrap:wrap;gap:.5rem">
+          <label for="context-select" style="font-size:.88rem;color:var(--text-muted);font-weight:500">
+            Target Sharing Context:
+          </label>
+          <select id="context-select" style="background:#0f172a;color:var(--text-main);border:1px solid var(--border-color);border-radius:6px;padding:.4rem .8rem;font-size:.85rem;outline:none;cursor:pointer">
+            <option value="public" selected>Public (External / Web)</option>
+            <option value="team">Team (Internal Collaborators)</option>
+            <option value="anonymous">Anonymous (Full Privacy)</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Analysis output -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">Metadata &amp; Risk Analysis</div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <button id="scan-btn" class="btn btn-secondary" style="display:none">Scan</button>
+            <button id="clean-btn" class="btn" disabled>Clean Metadata</button>
+          </div>
+        </div>
+        <div id="results" class="preview-box">No file selected. Ready for scan...</div>
+      </section>
+
+      <!-- Before vs After (hidden until clean) -->
+      <section id="compare-section" class="card" style="display:none;border-left:4px solid var(--success)">
+        <div class="card-header">
+          <div class="card-title" style="color:var(--success)">Before vs After Cleaning</div>
+          <span id="compare-summary" class="badge" style="background:rgba(34,197,94,.15);color:#22c55e;border-color:rgba(34,197,94,.4)"></span>
+        </div>
+        <div id="compare-body" class="compare-grid"></div>
+      </section>
+
+    </div><!-- /page-scan -->
+
+
+    <!-- ── PAGE: Location Check ── -->
+    <div id="page-cross" class="page">
+
+      <div class="page-header">
+        <h2>Cross-File Location Check</h2>
+        <p>Upload multiple files — DBSCAN with Haversine distance (250 m radius) uncovers shared location patterns that might reveal sensitive addresses or routines.</p>
       </div>
-      <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem; line-height: 1.5;">
-        Upload multiple files at once. IntentGuard uses DBSCAN with Haversine distance (250m radius) to uncover shared physical location patterns that might reveal sensitive addresses or routines.
-      </p>
 
-      <div class="dropzone" id="cross-dropzone" style="border-color: rgba(168, 85, 247, 0.4);">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.5rem;">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
-        </svg>
-        <div style="font-weight: 600; font-size: 0.95rem; color: #e9d5ff;">Click or drag multiple files here for cross-check</div>
-        <p>Supports selecting multiple photos or documents simultaneously</p>
-        <input type="file" id="cross-file-input" class="file-input" multiple>
-      </div>
+      <section class="card" style="border-left:4px solid var(--purple)">
+        <div class="card-header">
+          <div class="card-title" style="color:#d8b4fe">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+              <path d="M2 12h20"/>
+            </svg>
+            GPS Cluster Analysis
+          </div>
+          <span class="badge" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.4)">DBSCAN</span>
+        </div>
 
-      <div id="cross-file-summary" style="display: none; margin-top: 0.85rem; font-size: 0.85rem; color: #c084fc;"></div>
+        <div class="dropzone purple" id="cross-dropzone">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:.5rem">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <div style="font-weight:600;font-size:.95rem;color:#e9d5ff">Click or drag multiple files here</div>
+          <p>Select multiple photos or documents simultaneously</p>
+          <input type="file" id="cross-file-input" class="file-input" multiple>
+        </div>
 
-      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem;">
-        <button id="cross-submit-btn" class="btn" style="background: #a855f7; color: #ffffff;" disabled>Run Location Clustering</button>
-        <button id="cross-clear-btn" class="btn btn-secondary" style="display: none;">Clear</button>
-      </div>
+        <div id="cross-file-summary" style="display:none;margin-top:.85rem;font-size:.85rem;color:#c084fc"></div>
 
-      <div id="cross-results" class="preview-box" style="margin-top: 1rem;">No files selected for cross-file check.</div>
-    </section>
-  </main>
+        <div style="display:flex;gap:.5rem;align-items:center;margin-top:1rem">
+          <button id="cross-submit-btn" class="btn btn-purple" disabled>Run Location Clustering</button>
+          <button id="cross-clear-btn" class="btn btn-secondary" style="display:none">Clear</button>
+        </div>
 
-  <footer>
-    IntentGuard Prototype &bull; FastAPI + Scikit-learn + Pure JS UI
-  </footer>
+        <div id="cross-results" class="preview-box" style="margin-top:1rem">No files selected for cross-file check.</div>
+      </section>
+
+    </div><!-- /page-cross -->
+
+  </div><!-- /content -->
 
   <script>
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-    const pingDetails = document.getElementById('ping-details');
-    const checkBtn = document.getElementById('check-btn');
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('file-input');
-    const results = document.getElementById('results');
-    const scanBtn = document.getElementById('scan-btn');
-    const cleanBtn = document.getElementById('clean-btn');
-
-    // Store current selected file and last scan report
-    let selectedFile = null;
-    let lastScanReport = null; // set by scanFile(), used by clean handler
-
-    // Determine backend URL (handles http://localhost:8000 or custom host)
-    const BACKEND_URL = window.location.origin.startsWith('http') 
-      ? window.location.origin 
+    // ── Backend URL ──
+    const BACKEND_URL = window.location.origin.startsWith('http')
+      ? window.location.origin
       : 'http://localhost:8000';
 
+    // ── State ──
+    let selectedFile   = null;
+    let lastScanReport = null;
+
+    // ── DOM refs ──
+    const dropzone  = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const results   = document.getElementById('results');
+    const scanBtn   = document.getElementById('scan-btn');
+    const cleanBtn  = document.getElementById('clean-btn');
+
+    // ══════════════════════════════════════════
+    //  Navigation
+    // ══════════════════════════════════════════
+    function showPage(name) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('page-' + name).classList.add('active');
+      const navEl = document.getElementById('nav-' + name);
+      navEl.classList.add('active');
+    }
+
+    // ══════════════════════════════════════════
+    //  Helpers
+    // ══════════════════════════════════════════
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
@@ -505,284 +479,208 @@
         .replace(/'/g, '&#039;');
     }
 
-    async function checkHealth() {
-      statusDot.className = 'dot';
-      statusText.textContent = 'Checking backend...';
-      pingDetails.textContent = '';
-
-      const startTime = performance.now();
-      try {
-        const response = await fetch(`${BACKEND_URL}/health`, { method: 'GET' });
-        const latency = Math.round(performance.now() - startTime);
-
-        if (response.ok) {
-          const data = await response.json();
-          statusDot.className = 'dot connected';
-          statusText.textContent = 'Connected (HTTP ' + response.status + ')';
-          pingDetails.textContent = `Response: ${JSON.stringify(data)} (${latency}ms)`;
-        } else {
-          statusDot.className = 'dot disconnected';
-          statusText.textContent = `HTTP ${response.status} Error`;
-        }
-      } catch (err) {
-        statusDot.className = 'dot disconnected';
-        statusText.textContent = 'Backend Offline';
-        pingDetails.textContent = 'Could not reach ' + BACKEND_URL + ' - Ensure Uvicorn is running.';
-      }
-    }
-
+    // ══════════════════════════════════════════
+    //  Render metadata report
+    // ══════════════════════════════════════════
     function renderMetadataReport(report) {
       const { filename, file_type, metadata } = report;
 
       if (!metadata || metadata.length === 0) {
         results.innerHTML = `
-          <div style="padding: 1rem; color: var(--success);">
+          <div style="padding:1rem;color:var(--success)">
             <strong>${escapeHtml(filename)}</strong> (${file_type.toUpperCase()}): No metadata detected. File appears clean.
-          </div>
-        `;
+          </div>`;
         return;
       }
 
-      const highCount = metadata.filter(m => m.category === 'high').length;
-      const medCount = metadata.filter(m => m.category === 'medium').length;
-      const safeCount = metadata.filter(m => m.category === 'safe').length;
+      const highCount  = metadata.filter(m => m.category === 'high').length;
+      const medCount   = metadata.filter(m => m.category === 'medium').length;
+      const safeCount  = metadata.filter(m => m.category === 'safe').length;
+      const overall    = report.overall_risk || null;
 
-      const overall = report.overall_risk || null;
       let overallHtml = '';
       if (overall) {
-        const riskLvl = (overall.risk_level || 'safe').toLowerCase();
-        const confPct = Math.round((overall.confidence || 0) * 100);
-        const sourceLabel = (overall.source || 'ml').toUpperCase();
-        const contextLabel = (report.context || 'public').toUpperCase();
-
+        const riskLvl    = (overall.risk_level || 'safe').toLowerCase();
+        const confPct    = Math.round((overall.confidence || 0) * 100);
+        const sourceLabel = (overall.source  || 'ml').toUpperCase();
+        const ctxLabel    = (report.context  || 'public').toUpperCase();
         overallHtml = `
-          <div class="meta-item ${riskLvl}" style="margin-bottom: 1rem; padding: 0.9rem 1.1rem; border-radius: 8px;">
-            <div style="flex: 1;">
-              <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; margin-bottom: 0.2rem;">
-                Context: <strong>${escapeHtml(contextLabel)}</strong> &bull; Engine: ${sourceLabel}
+          <div class="meta-item ${riskLvl}" style="margin-bottom:1rem;padding:.9rem 1.1rem;border-radius:8px">
+            <div style="flex:1">
+              <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;opacity:.85;margin-bottom:.2rem">
+                Context: <strong>${escapeHtml(ctxLabel)}</strong> &bull; Engine: ${sourceLabel}
               </div>
-              <div style="font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em;">
+              <div style="font-size:1.15rem;font-weight:800;letter-spacing:-.01em">
                 Overall ML Risk: ${riskLvl.toUpperCase()}
               </div>
             </div>
-            <div style="text-align: right;">
+            <div style="text-align:right">
               <span class="meta-badge">${riskLvl.toUpperCase()} RISK</span>
-              <div style="font-size: 0.75rem; opacity: 0.85; margin-top: 0.35rem;">${confPct}% Confidence</div>
+              <div style="font-size:.75rem;opacity:.85;margin-top:.35rem">${confPct}% Confidence</div>
             </div>
-          </div>
-        `;
+          </div>`;
       }
 
       let html = `
         ${overallHtml}
-        <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;border-bottom:1px solid var(--border-color);padding-bottom:.75rem">
           <div>
-            <strong style="color: var(--text-main); font-size: 0.95rem;">${escapeHtml(filename)}</strong>
-            <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 0.5rem;">(${file_type.toUpperCase()})</span>
+            <strong style="color:var(--text-main);font-size:.95rem">${escapeHtml(filename)}</strong>
+            <span style="color:var(--text-muted);font-size:.8rem;margin-left:.5rem">(${file_type.toUpperCase()})</span>
           </div>
-          <div style="display: flex; gap: 0.5rem; font-size: 0.75rem;">
-            ${highCount > 0 ? `<span style="background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">${highCount} High</span>` : ''}
-            ${medCount > 0 ? `<span style="background: rgba(245, 158, 11, 0.2); color: var(--warning); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">${medCount} Medium</span>` : ''}
-            ${safeCount > 0 ? `<span style="background: rgba(34, 197, 94, 0.2); color: var(--success); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600;">${safeCount} Safe</span>` : ''}
+          <div style="display:flex;gap:.5rem;font-size:.75rem">
+            ${highCount  > 0 ? `<span style="background:rgba(239,68,68,.2);color:var(--danger);padding:.2rem .5rem;border-radius:4px;font-weight:600">${highCount} High</span>` : ''}
+            ${medCount   > 0 ? `<span style="background:rgba(245,158,11,.2);color:var(--warning);padding:.2rem .5rem;border-radius:4px;font-weight:600">${medCount} Medium</span>` : ''}
+            ${safeCount  > 0 ? `<span style="background:rgba(34,197,94,.2);color:var(--success);padding:.2rem .5rem;border-radius:4px;font-weight:600">${safeCount} Safe</span>` : ''}
           </div>
         </div>
-        <div class="meta-list">
-      `;
+        <div class="meta-list">`;
 
       metadata.forEach(item => {
         const cat = (item.category || 'safe').toLowerCase();
-        const badgeLabel = cat.toUpperCase();
         html += `
           <div class="meta-item ${cat}">
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem;">${escapeHtml(item.field)}</div>
-              <div style="word-break: break-word; font-size: 0.9rem; opacity: 0.95;">${escapeHtml(item.value)}</div>
-              <div style="font-size: 0.72rem; opacity: 0.6; margin-top: 0.25rem;">Key: ${escapeHtml(item.raw_key)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:.85rem;margin-bottom:.2rem">${escapeHtml(item.field)}</div>
+              <div style="word-break:break-word;font-size:.9rem;opacity:.95">${escapeHtml(item.value)}</div>
+              <div style="font-size:.72rem;opacity:.6;margin-top:.25rem">Key: ${escapeHtml(item.raw_key)}</div>
             </div>
-            <span class="meta-badge">${badgeLabel}</span>
-          </div>
-        `;
+            <span class="meta-badge">${cat.toUpperCase()}</span>
+          </div>`;
       });
 
       html += '</div>';
       results.innerHTML = html;
     }
 
+    // ══════════════════════════════════════════
+    //  Scan
+    // ══════════════════════════════════════════
     async function scanFile(file) {
       if (!file) return;
 
-      selectedFile = file;
+      selectedFile   = file;
       lastScanReport = null;
-      // Hide comparison when starting a fresh scan
       document.getElementById('compare-section').style.display = 'none';
 
       scanBtn.style.display = 'inline-block';
-      scanBtn.textContent = 'Scanning...';
-      scanBtn.disabled = true;
-      cleanBtn.disabled = true;
+      scanBtn.textContent   = 'Scanning...';
+      scanBtn.disabled      = true;
+      cleanBtn.disabled     = true;
 
-      results.innerHTML = `<div style="color: var(--primary);">Scanning <strong>${escapeHtml(file.name)}</strong>...</div>`;
+      results.innerHTML = `<div style="color:var(--primary)">Scanning <strong>${escapeHtml(file.name)}</strong>...</div>`;
 
-      const formData = new FormData();
-      formData.append('file', file);
-      const contextSelect = document.getElementById('context-select');
-      if (contextSelect) {
-        formData.append('context', contextSelect.value);
-      }
+      const fd = new FormData();
+      fd.append('file', file);
+      const ctxSel = document.getElementById('context-select');
+      if (ctxSel) fd.append('context', ctxSel.value);
 
       try {
-        const response = await fetch(`${BACKEND_URL}/scan`, {
-          method: 'POST',
-          body: formData,
-        });
+        const resp = await fetch(`${BACKEND_URL}/scan`, { method: 'POST', body: fd });
 
-        if (!response.ok) {
-          let errorMsg = `HTTP ${response.status} Error`;
-          try {
-            const errData = await response.json();
-            if (errData.detail) errorMsg = errData.detail;
-          } catch (e) {}
-          results.innerHTML = `<div style="color: var(--danger); line-height: 1.5;"><strong>Scan Error:</strong> ${escapeHtml(errorMsg)}</div>`;
+        if (!resp.ok) {
+          let msg = `HTTP ${resp.status} Error`;
+          try { const e = await resp.json(); if (e.detail) msg = e.detail; } catch {}
+          results.innerHTML = `<div style="color:var(--danger);line-height:1.5"><strong>Scan Error:</strong> ${escapeHtml(msg)}</div>`;
           return;
         }
 
-        const report = await response.json();
-        lastScanReport = report; // save for Before vs After
+        const report    = await resp.json();
+        lastScanReport  = report;
         renderMetadataReport(report);
         cleanBtn.disabled = false;
-      } catch (err) {
-        results.innerHTML = `<div style="color: var(--danger); line-height: 1.5;"><strong>Could not reach backend</strong> &mdash; Unable to connect to ${BACKEND_URL}. Ensure the backend server is running.</div>`;
+      } catch {
+        results.innerHTML = `<div style="color:var(--danger);line-height:1.5"><strong>Could not reach backend</strong> &mdash; Ensure the backend server is running on ${BACKEND_URL}.</div>`;
       } finally {
         scanBtn.textContent = 'Re-scan';
-        scanBtn.disabled = false;
+        scanBtn.disabled    = false;
       }
     }
 
     function handleFile(file) {
       if (!file) return;
-      selectedFile = file;
+      selectedFile   = file;
       lastScanReport = null;
       document.getElementById('compare-section').style.display = 'none';
       scanFile(file);
     }
 
-    // Dropzone interactions
+    // Dropzone events
     dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+    ['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); }));
+    dropzone.addEventListener('drop', e => { const f = e.dataTransfer?.files; if (f?.length) handleFile(f[0]); });
 
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) handleFile(file);
-    });
+    scanBtn.addEventListener('click', () => { if (selectedFile) scanFile(selectedFile); });
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-      dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzone.classList.add('dragover');
-      });
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzone.classList.remove('dragover');
-      });
-    });
-
-    dropzone.addEventListener('drop', (e) => {
-      const files = e.dataTransfer && e.dataTransfer.files;
-      if (files && files.length > 0) {
-        handleFile(files[0]);
-      }
-    });
-
-    // Manual scan button
-    scanBtn.addEventListener('click', () => {
-      if (selectedFile) scanFile(selectedFile);
-    });
-
-    // Context selector change triggers re-scan
     const contextSelect = document.getElementById('context-select');
     if (contextSelect) {
-      contextSelect.addEventListener('change', () => {
-        if (selectedFile) scanFile(selectedFile);
-      });
+      contextSelect.addEventListener('change', () => { if (selectedFile) scanFile(selectedFile); });
     }
 
-    // =============================================
-    // Clean button — download + Before vs After
-    // =============================================
+    // ══════════════════════════════════════════
+    //  Clean + Before vs After
+    // ══════════════════════════════════════════
     cleanBtn.addEventListener('click', async () => {
       if (!selectedFile) return;
 
-      const originalText = cleanBtn.textContent;
+      const origText    = cleanBtn.textContent;
       cleanBtn.disabled = true;
       cleanBtn.textContent = 'Cleaning...';
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+      const fd = new FormData();
+      fd.append('file', selectedFile);
 
       try {
-        const response = await fetch(`${BACKEND_URL}/clean`, {
-          method: 'POST',
-          body: formData,
-        });
+        const resp = await fetch(`${BACKEND_URL}/clean`, { method: 'POST', body: fd });
 
-        if (!response.ok) {
-          let detailMsg = `HTTP ${response.status} ${response.statusText}`;
-          try {
-            const err = await response.json();
-            if (err.detail) detailMsg = err.detail;
-          } catch (e) {}
-          if (response.status === 404) {
-            alert(`Notice: POST /clean returned 404 Not Found.\nThe clean endpoint has not been implemented yet.`);
+        if (!resp.ok) {
+          let msg = `HTTP ${resp.status} ${resp.statusText}`;
+          try { const e = await resp.json(); if (e.detail) msg = e.detail; } catch {}
+          if (resp.status === 404) {
+            alert(`Notice: POST /clean returned 404. Endpoint not implemented yet.`);
           } else {
-            alert(`Clean failed: ${detailMsg}`);
+            alert(`Clean failed: ${msg}`);
           }
           return;
         }
 
-        // --- Download the cleaned file ---
-        const cleanedBlob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(cleanedBlob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `cleaned_${selectedFile.name}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(downloadUrl);
+        // Download
+        const blob = await resp.blob();
+        const url  = window.URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = `cleaned_${selectedFile.name}`;
+        document.body.appendChild(a); a.click(); a.remove();
+        window.URL.revokeObjectURL(url);
 
-        // --- Re-scan the cleaned blob to get After metadata ---
+        // Re-scan cleaned blob for comparison
         cleanBtn.textContent = 'Comparing...';
-        const cleanedFile = new File([cleanedBlob], selectedFile.name, { type: selectedFile.type });
-        const rescanForm = new FormData();
-        rescanForm.append('file', cleanedFile);
-        const contextSelect = document.getElementById('context-select');
-        if (contextSelect) rescanForm.append('context', contextSelect.value);
+        const cleanedFile = new File([blob], selectedFile.name, { type: selectedFile.type });
+        const rf = new FormData();
+        rf.append('file', cleanedFile);
+        const ctxSel = document.getElementById('context-select');
+        if (ctxSel) rf.append('context', ctxSel.value);
 
         let afterReport = null;
         try {
-          const rescanResp = await fetch(`${BACKEND_URL}/scan`, { method: 'POST', body: rescanForm });
-          if (rescanResp.ok) afterReport = await rescanResp.json();
-        } catch (e) { /* rescan failed — comparison not available */ }
+          const r2 = await fetch(`${BACKEND_URL}/scan`, { method: 'POST', body: rf });
+          if (r2.ok) afterReport = await r2.json();
+        } catch {}
 
-        if (afterReport && lastScanReport) {
-          renderComparison(lastScanReport, afterReport);
-        }
+        if (afterReport && lastScanReport) renderComparison(lastScanReport, afterReport);
 
-      } catch (err) {
+      } catch {
         alert('Could not reach backend for /clean. Ensure backend server is running.');
       } finally {
-        cleanBtn.disabled = false;
-        cleanBtn.textContent = originalText;
+        cleanBtn.disabled    = false;
+        cleanBtn.textContent = origText;
       }
     });
 
-    // =============================================
-    // Before vs After renderer
-    // =============================================
+    // ══════════════════════════════════════════
+    //  Before vs After renderer
+    // ══════════════════════════════════════════
     function renderComparison(before, after) {
       const section   = document.getElementById('compare-section');
       const body      = document.getElementById('compare-body');
@@ -791,49 +689,39 @@
       const beforeFields = before.metadata || [];
       const afterFields  = after.metadata  || [];
 
-      // Build a lookup of after fields by raw_key for fast access
       const afterMap = {};
       afterFields.forEach(f => { afterMap[f.raw_key] = f; });
 
-      // Count fields removed (had high/medium risk before, absent after)
       const riskyRemoved = beforeFields.filter(f =>
         (f.category === 'high' || f.category === 'medium') && !afterMap[f.raw_key]
       ).length;
 
-      // Overall risk badges
       const beforeRisk = (before.overall_risk?.risk_level || 'safe').toLowerCase();
       const afterRisk  = (after.overall_risk?.risk_level  || 'safe').toLowerCase();
 
-      const riskBadgeStyle = (level) => {
-        const map = {
-          high:   'background:rgba(239,68,68,0.25);color:#ef4444;border:1px solid rgba(239,68,68,0.5)',
-          medium: 'background:rgba(245,158,11,0.25);color:#f59e0b;border:1px solid rgba(245,158,11,0.5)',
-          safe:   'background:rgba(34,197,94,0.25);color:#22c55e;border:1px solid rgba(34,197,94,0.5)',
-        };
-        return map[level] || map.safe;
-      };
+      const badgeStyle = lvl => ({
+        high:   'background:rgba(239,68,68,.25);color:#ef4444;border:1px solid rgba(239,68,68,.5)',
+        medium: 'background:rgba(245,158,11,.25);color:#f59e0b;border:1px solid rgba(245,158,11,.5)',
+        safe:   'background:rgba(34,197,94,.25);color:#22c55e;border:1px solid rgba(34,197,94,.5)',
+      }[lvl] || 'background:rgba(34,197,94,.25);color:#22c55e;border:1px solid rgba(34,197,94,.5)');
 
-      // Build field rows — use before fields as the canonical order
-      let beforeRows = '';
-      let afterRows  = '';
+      let beforeRows = '', afterRows = '';
 
       beforeFields.forEach(field => {
-        const cat = (field.category || 'safe').toLowerCase();
+        const cat     = (field.category || 'safe').toLowerCase();
         const inAfter = afterMap[field.raw_key];
 
-        // BEFORE column — always show with risk color
         beforeRows += `
           <div class="compare-field risk-${cat}">
             <span class="field-name">${escapeHtml(field.field)}</span>
             <span class="field-value">${escapeHtml(field.value)}</span>
           </div>`;
 
-        // AFTER column — removed or retained
         if (!inAfter && (cat === 'high' || cat === 'medium')) {
           afterRows += `
             <div class="compare-field removed">
               <span class="field-name">${escapeHtml(field.field)}</span>
-              <span class="field-value" style="opacity:0.45;">null</span>
+              <span class="field-value" style="opacity:.45">null</span>
             </div>`;
         } else if (inAfter) {
           const aCat = (inAfter.category || 'safe').toLowerCase();
@@ -843,16 +731,14 @@
               <span class="field-value">${escapeHtml(inAfter.value)}</span>
             </div>`;
         } else {
-          // safe field, not in after either (fully stripped) — mark as removed too
           afterRows += `
             <div class="compare-field removed">
               <span class="field-name">${escapeHtml(field.field)}</span>
-              <span class="field-value" style="opacity:0.45;">null</span>
+              <span class="field-value" style="opacity:.45">null</span>
             </div>`;
         }
       });
 
-      // Summary badge
       summaryEl.textContent = riskyRemoved > 0
         ? `${riskyRemoved} risky field${riskyRemoved > 1 ? 's' : ''} removed`
         : 'No risky fields found — file was already clean';
@@ -860,34 +746,32 @@
       body.innerHTML = `
         <div class="compare-col before">
           <div class="compare-col-header">
-            <span>&#128308; BEFORE &mdash; Original File</span>
-            <span class="meta-badge" style="${riskBadgeStyle(beforeRisk)}">${beforeRisk.toUpperCase()} RISK</span>
+            <span>&#128308; BEFORE &mdash; Original</span>
+            <span class="meta-badge" style="${badgeStyle(beforeRisk)}">${beforeRisk.toUpperCase()} RISK</span>
           </div>
-          ${beforeRows || '<div style="color:var(--text-muted);font-size:0.85rem;">No metadata detected.</div>'}
+          ${beforeRows || '<div style="color:var(--text-muted);font-size:.85rem">No metadata detected.</div>'}
         </div>
         <div class="compare-col after">
           <div class="compare-col-header">
-            <span>&#128994; AFTER &mdash; Cleaned File</span>
-            <span class="meta-badge" style="${riskBadgeStyle(afterRisk)}">${afterRisk.toUpperCase()} RISK</span>
+            <span>&#128994; AFTER &mdash; Cleaned</span>
+            <span class="meta-badge" style="${badgeStyle(afterRisk)}">${afterRisk.toUpperCase()} RISK</span>
           </div>
-          ${afterRows || '<div style="color:var(--text-muted);font-size:0.85rem;">null</div>'}
-        </div>
-      `;
+          ${afterRows || '<div style="color:var(--text-muted);font-size:.85rem">null</div>'}
+        </div>`;
 
       section.style.display = 'block';
-      // Smooth scroll into view
       setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
-    // ==========================================
-    // Cross-File Location Clustering Logic
-    // ==========================================
-    const crossDropzone = document.getElementById('cross-dropzone');
-    const crossFileInput = document.getElementById('cross-file-input');
-    const crossSubmitBtn = document.getElementById('cross-submit-btn');
-    const crossClearBtn = document.getElementById('cross-clear-btn');
-    const crossFileSummary = document.getElementById('cross-file-summary');
-    const crossResults = document.getElementById('cross-results');
+    // ══════════════════════════════════════════
+    //  Cross-File GPS Clustering
+    // ══════════════════════════════════════════
+    const crossDropzone   = document.getElementById('cross-dropzone');
+    const crossFileInput  = document.getElementById('cross-file-input');
+    const crossSubmitBtn  = document.getElementById('cross-submit-btn');
+    const crossClearBtn   = document.getElementById('cross-clear-btn');
+    const crossFileSummary= document.getElementById('cross-file-summary');
+    const crossResults    = document.getElementById('cross-results');
 
     let crossFiles = [];
 
@@ -895,79 +779,53 @@
       if (!files || files.length === 0) return;
       crossFiles = Array.from(files);
       crossFileSummary.style.display = 'block';
-      crossFileSummary.textContent = `Selected ${crossFiles.length} file(s): ${crossFiles.map(f => f.name).join(', ')}`;
-      crossSubmitBtn.disabled = false;
-      crossClearBtn.style.display = 'inline-block';
-      crossResults.textContent = `Ready to analyze ${crossFiles.length} file(s) for shared physical locations.`;
+      crossFileSummary.textContent   = `Selected ${crossFiles.length} file(s): ${crossFiles.map(f => f.name).join(', ')}`;
+      crossSubmitBtn.disabled        = false;
+      crossClearBtn.style.display    = 'inline-block';
+      crossResults.textContent       = `Ready to analyze ${crossFiles.length} file(s) for shared physical locations.`;
     }
 
     crossDropzone.addEventListener('click', () => crossFileInput.click());
-    crossFileInput.addEventListener('change', (e) => updateCrossFiles(e.target.files));
+    crossFileInput.addEventListener('change', e => updateCrossFiles(e.target.files));
 
-    ['dragenter', 'dragover'].forEach(evt => {
-      crossDropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        crossDropzone.classList.add('dragover');
-      });
-    });
-
-    ['dragleave', 'drop'].forEach(evt => {
-      crossDropzone.addEventListener(evt, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        crossDropzone.classList.remove('dragover');
-      });
-    });
-
-    crossDropzone.addEventListener('drop', (e) => {
-      const dt = e.dataTransfer;
-      if (dt && dt.files && dt.files.length > 0) {
-        updateCrossFiles(dt.files);
-      }
-    });
+    ['dragenter','dragover'].forEach(ev => crossDropzone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); crossDropzone.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(ev => crossDropzone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); crossDropzone.classList.remove('dragover'); }));
+    crossDropzone.addEventListener('drop', e => { const f = e.dataTransfer?.files; if (f?.length) updateCrossFiles(f); });
 
     crossClearBtn.addEventListener('click', () => {
       crossFiles = [];
-      crossFileInput.value = '';
+      crossFileInput.value           = '';
       crossFileSummary.style.display = 'none';
-      crossSubmitBtn.disabled = true;
-      crossClearBtn.style.display = 'none';
-      crossResults.textContent = 'No files selected for cross-file check.';
+      crossSubmitBtn.disabled        = true;
+      crossClearBtn.style.display    = 'none';
+      crossResults.textContent       = 'No files selected for cross-file check.';
     });
 
     crossSubmitBtn.addEventListener('click', async () => {
       if (crossFiles.length === 0) return;
 
-      crossSubmitBtn.disabled = true;
-      crossSubmitBtn.textContent = 'Clustering...';
-      crossResults.innerHTML = '<div style="color: #c084fc;">Analyzing GPS patterns across uploaded files with DBSCAN...</div>';
+      crossSubmitBtn.disabled      = true;
+      crossSubmitBtn.textContent   = 'Clustering...';
+      crossResults.innerHTML       = '<div style="color:#c084fc">Analyzing GPS patterns across uploaded files with DBSCAN...</div>';
 
-      const formData = new FormData();
-      crossFiles.forEach(f => formData.append('files', f));
+      const fd = new FormData();
+      crossFiles.forEach(f => fd.append('files', f));
 
       try {
-        const response = await fetch(`${BACKEND_URL}/cross-check`, {
-          method: 'POST',
-          body: formData,
-        });
+        const resp = await fetch(`${BACKEND_URL}/cross-check`, { method: 'POST', body: fd });
 
-        if (!response.ok) {
-          let errText = `HTTP ${response.status} Error`;
-          try {
-            const err = await response.json();
-            if (err.detail) errText = err.detail;
-          } catch (e) {}
-          crossResults.innerHTML = `<div style="color: var(--danger);"><strong>Error:</strong> ${escapeHtml(errText)}</div>`;
+        if (!resp.ok) {
+          let msg = `HTTP ${resp.status} Error`;
+          try { const e = await resp.json(); if (e.detail) msg = e.detail; } catch {}
+          crossResults.innerHTML = `<div style="color:var(--danger)"><strong>Error:</strong> ${escapeHtml(msg)}</div>`;
           return;
         }
 
-        const data = await response.json();
-        renderCrossCheckResults(data);
-      } catch (err) {
-        crossResults.innerHTML = `<div style="color: var(--danger);"><strong>Could not reach backend</strong> &mdash; Unable to connect to ${BACKEND_URL}/cross-check.</div>`;
+        renderCrossCheckResults(await resp.json());
+      } catch {
+        crossResults.innerHTML = `<div style="color:var(--danger)"><strong>Could not reach backend</strong> &mdash; Unable to connect to ${BACKEND_URL}/cross-check.</div>`;
       } finally {
-        crossSubmitBtn.disabled = false;
+        crossSubmitBtn.disabled    = false;
         crossSubmitBtn.textContent = 'Run Location Clustering';
       }
     });
@@ -977,53 +835,47 @@
 
       if (clusters_found === 0) {
         crossResults.innerHTML = `
-          <div class="meta-item safe" style="padding: 1rem; border-radius: 8px;">
-            <div style="flex: 1;">
-              <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.25rem;">No Shared Clusters Detected</div>
-              <div style="opacity: 0.9; font-size: 0.9rem;">${escapeHtml(message)}</div>
+          <div class="meta-item safe" style="padding:1rem;border-radius:8px">
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:.95rem;margin-bottom:.25rem">No Shared Clusters Detected</div>
+              <div style="opacity:.9;font-size:.9rem">${escapeHtml(message)}</div>
             </div>
             <span class="meta-badge">SAFE</span>
-          </div>
-        `;
+          </div>`;
         return;
       }
 
       let html = `
-        <div class="meta-item high" style="padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-          <div style="flex: 1;">
-            <div style="font-weight: 800; font-size: 1.05rem; margin-bottom: 0.25rem;">
+        <div class="meta-item high" style="padding:1rem;border-radius:8px;margin-bottom:1rem">
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:1.05rem;margin-bottom:.25rem">
               Shared Location Pattern Detected (${clusters_found} Cluster${clusters_found > 1 ? 's' : ''})
             </div>
-            <div style="opacity: 0.95; font-size: 0.9rem; line-height: 1.4;">${escapeHtml(message)}</div>
+            <div style="opacity:.95;font-size:.9rem;line-height:1.4">${escapeHtml(message)}</div>
           </div>
           <span class="meta-badge">HIGH RISK</span>
         </div>
-        <div class="meta-list">
-      `;
+        <div class="meta-list">`;
 
       clusters.forEach((cluster, idx) => {
         html += `
-          <div class="meta-item high" style="flex-direction: column; align-items: stretch; gap: 0.6rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="meta-item high" style="flex-direction:column;align-items:stretch;gap:.6rem">
+            <div style="display:flex;justify-content:space-between;align-items:center">
               <strong>Cluster #${idx + 1} (Shared within ${cluster.radius_meters}m)</strong>
               <span class="meta-badge">${cluster.files.length} FILES</span>
             </div>
-            <div style="font-size: 0.85rem; color: #fca5a5;">
-              Center Coordinates: <strong>Lat ${cluster.center_lat}, Lon ${cluster.center_lon}</strong>
+            <div style="font-size:.85rem;color:#fca5a5">
+              Center: <strong>Lat ${cluster.center_lat}, Lon ${cluster.center_lon}</strong>
             </div>
-            <div style="font-size: 0.85rem; opacity: 0.95; background: rgba(0, 0, 0, 0.25); padding: 0.5rem 0.75rem; border-radius: 4px;">
+            <div style="font-size:.85rem;background:rgba(0,0,0,.25);padding:.5rem .75rem;border-radius:4px">
               <strong>Linked Files:</strong> ${cluster.files.map(f => escapeHtml(f)).join(', ')}
             </div>
-          </div>
-        `;
+          </div>`;
       });
 
       html += '</div>';
       crossResults.innerHTML = html;
     }
-
-    checkBtn.addEventListener('click', checkHealth);
-    window.addEventListener('DOMContentLoaded', checkHealth);
   </script>
 </body>
 </html>
