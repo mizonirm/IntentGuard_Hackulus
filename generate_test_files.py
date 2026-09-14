@@ -154,8 +154,8 @@ if __name__ == "__main__":
     # share a location even though neither one alone looks risky.
     make_photo("test_photo.jpg", lat=13.0827, lon=80.2707)      # Chennai pt A
     make_photo("test_photo_2.jpg", lat=13.0834, lon=80.2715)    # Chennai pt B (~100m away)
-    make_photo("test_photo_far.jpg", lat=28.6139, lon=77.2090)  # Delhi - far away
-
+    make_photo("test_photo_far.jpg", lat=28.6139, lon=77.2090)  # Delhi - ~1,760 km from Chennai
+    
     make_docx("test_doc.docx")
     make_xlsx("test_sheet.xlsx")
     make_pdf("test_file.pdf")

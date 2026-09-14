@@ -26,7 +26,6 @@ Most people never check. IntentGuard does it for them.
 | 🤖 **ML Risk Scoring** | Random Forest classifier predicts risk level (high / medium / safe) with confidence score |
 | 🧹 **Metadata Cleaning** | Strips all sensitive metadata and returns a clean copy for download |
 | 🗺️ **Cross-File GPS Clustering** | Upload multiple images — DBSCAN with Haversine distance detects shared physical locations across files even when no single file looks risky |
-| 🎨 **Dark-mode UI** | Drag-and-drop interface with color-coded risk display (red/yellow/green) |
 | ⚡ **Context-Aware Risk** | Risk scoring adapts to who you're sharing with (public / team / anonymous) |
 
 ---
