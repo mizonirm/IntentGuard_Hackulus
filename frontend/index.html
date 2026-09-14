@@ -833,7 +833,7 @@
           afterRows += `
             <div class="compare-field removed">
               <span class="field-name">${escapeHtml(field.field)}</span>
-              <span class="field-value">&#10003; Removed</span>
+              <span class="field-value" style="opacity:0.45;">null</span>
             </div>`;
         } else if (inAfter) {
           const aCat = (inAfter.category || 'safe').toLowerCase();
@@ -847,7 +847,7 @@
           afterRows += `
             <div class="compare-field removed">
               <span class="field-name">${escapeHtml(field.field)}</span>
-              <span class="field-value">&#10003; Removed</span>
+              <span class="field-value" style="opacity:0.45;">null</span>
             </div>`;
         }
       });
@@ -870,7 +870,7 @@
             <span>&#128994; AFTER &mdash; Cleaned File</span>
             <span class="meta-badge" style="${riskBadgeStyle(afterRisk)}">${afterRisk.toUpperCase()} RISK</span>
           </div>
-          ${afterRows || '<div style="color:var(--success);font-size:0.85rem;">&#10003; All metadata removed.</div>'}
+          ${afterRows || '<div style="color:var(--text-muted);font-size:0.85rem;">null</div>'}
         </div>
       `;
 
